@@ -1,0 +1,52 @@
+# ─── Secrets ────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+
+# ─── Python ─────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+venv/
+.venv/
+env/
+.Python
+
+# ─── Node / Next.js ─────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# ─── Testing ────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# ─── IDE ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── OS ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Misc ───────────────────────────────────────────────────
+*.tmp
+*.bak
+
+# ─── Local archive (not for GitHub) ─────────────────────────
+_archive/

@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-void: #0a0c10;
+  --color-surface: #0d1017;
+  --color-card: #121620;
+  --color-sky: #38bdf8;
+  --color-teal: #22d3ee;
+  --color-ice: #d4eaf7;
+  --color-muted: rgba(180, 200, 220, 0.45);
+  --glass-bg: rgba(212, 234, 247, 0.04);
+  --glass-border: rgba(212, 234, 247, 0.10);
+  --radius-card: 14px;
+  --radius-input: 10px;
+  --radius-badge: 8px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #0a0c10;
+  color: #d4eaf7;
+  font-family: var(--font-manrope), sans-serif;
+  min-height: 100vh;
+}
+
+/* Glass utility */
+.glass {
+  background: rgba(212, 234, 247, 0.04);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(212, 234, 247, 0.10);
+  border-radius: 14px;
+}
+
+/* Mono font override */
+.font-mono,
+[class*="font-mono"] {
+  font-family: var(--font-azeret-mono), monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0c10;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.45);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.25) #0a0c10;
+}
+
+/* Focus ring override */
+*:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.6);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(56, 189, 248, 0.25);
+  color: #d4eaf7;
+}
