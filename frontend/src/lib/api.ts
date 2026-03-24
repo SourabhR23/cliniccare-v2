@@ -1,8 +1,10 @@
 import axios from 'axios'
 import { useAuthStore } from '@/store/auth'
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+
 export const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: `${BASE_URL}/api`,
 })
 
 api.interceptors.request.use((config) => {
@@ -136,4 +138,4 @@ export const cancelAppointment = (id: string) =>
 
 // Health
 export const getHealth = () =>
-  axios.get('http://localhost:8000/health')
+  axios.get(`${BASE_URL}/health`)

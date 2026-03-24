@@ -323,7 +323,7 @@ export default function AdminPage() {
             <p className="text-xs font-semibold text-[#052838] mb-3">System Information</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[
-                { label: 'Backend', value: 'localhost:8000' },
+                { label: 'Backend', value: process.env.NEXT_PUBLIC_API_URL ?? 'localhost:8000' },
                 { label: 'API Version', value: '3.0.0' },
                 { label: 'LLM', value: 'OpenAI / EURI' },
                 { label: 'Vector Store', value: 'ChromaDB' },
