@@ -86,10 +86,9 @@ async def connect_to_mongodb() -> None:
         connectTimeoutMS=settings.mongodb_connect_timeout_ms,
         # Required on Render (Ubuntu 22.04 / OpenSSL 3.x) where TLS handshake
         # with MongoDB Atlas fails due to cipher suite negotiation issues.
-        # tlsAllowInvalidCertificates: skip cert validation
-        # tlsInsecure: also skip hostname verification + relax cipher checks
+        # tlsInsecure=True covers both tlsAllowInvalidCertificates AND
+        # tlsAllowInvalidHostnames — do NOT set both, pymongo rejects it.
         # TLS is still fully active — data in transit is still encrypted.
-        tlsAllowInvalidCertificates=True,
         tlsInsecure=True,
     )
 
