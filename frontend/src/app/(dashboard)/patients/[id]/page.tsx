@@ -462,8 +462,7 @@ function EditVisitModal({
     },
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: Record<string, unknown>) => {
     const payload = { ...data }
     if (!payload.bp) delete payload.bp
     if (!payload.notes) delete payload.notes
