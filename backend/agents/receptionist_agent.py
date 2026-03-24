@@ -41,15 +41,17 @@ _llm = make_chat_llm(temperature=0)
 # NODE 1 — IDENTIFY PATIENT
 # ─────────────────────────────────────────────────────────────
 
-IDENTIFY_PROMPT = """You are a clinic receptionist. The staff member wants to check in a patient.
+IDENTIFY_PROMPT = """You are a friendly clinic receptionist. The staff member wants to check in or find a patient.
 
-Extract the patient name and/or phone number from the message.
-Search for the patient using the search_patients tool.
+If the message says "search again", "different patient", or similar — ask: "Sure! What's the patient's name or phone number?"
+Do NOT call any tool in that case.
+
+Otherwise, extract the patient name and/or phone number from the message and search using the search_patients tool.
 
 After searching:
-- If 1 exact match: confirm with staff "Found: [Name], last visit [date]. Proceed?"
+- If 1 exact match: say "Found **[Name]** — last visit [date], assigned to [doctor]. Shall I proceed with this patient?"
 - If multiple matches: list the top 3 and ask "Which patient did you mean?"
-- If no match: say "No record found for [query]. I'll register a new patient."
+- If no match: say "I couldn't find '[query]' in the system. Would you like to register them as a new patient?"
 
 Always use the search_patients tool before concluding new vs returning."""
 
@@ -59,14 +61,24 @@ async def identify_patient(state: AgentState, tools: list) -> dict:
     Searches MongoDB for the patient. Sets is_new_patient in state.
     Short-circuits if patient is already known (e.g. info queries after check-in).
     """
-    # Patient already checked in — skip re-search, go straight to fetch_patient_record.
-    # This handles "email of this patient", "phone number?", "show patient details" etc.
-    if state.get("patient_id") and state.get("is_new_patient") is False:
+    # Patient already checked in — skip re-search for info queries.
+    # Do NOT short-circuit if the message is a register/new-patient request,
+    # as that indicates a different patient is being registered.
+    last_msg_content = state["messages"][-1].content.lower() if state.get("messages") else ""
+    is_registration_request = any(
+        kw in last_msg_content for kw in ("register", "new patient", "add patient", "no, search", "search again")
+    )
+    if state.get("patient_id") and state.get("is_new_patient") is False and not is_registration_request:
         return {
             "is_new_patient": False,
             "patient_id": state.get("patient_id"),
             "patient_name": state.get("patient_name"),
         }
+
+    # Clear stale patient state when starting a fresh search
+    if is_registration_request:
+        # Reset so we don't carry over a previous patient's data
+        state = {**state, "patient_id": None, "patient_name": None, "is_new_patient": None}
 
     llm_with_tools = _llm.bind_tools(tools)
 

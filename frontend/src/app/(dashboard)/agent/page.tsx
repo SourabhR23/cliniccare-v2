@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { agentChat } from '@/lib/api'
 import { useAuthStore } from '@/store/auth'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,7 @@ function AgentBadge({ agent }: { agent?: string }) {
 function AssistantContent({ content }: { content: string }) {
   return (
     <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
       components={{
         p: ({ children }) => (
           <p className="text-sm text-[#052838] leading-relaxed mb-2 last:mb-0">{children}</p>
@@ -68,19 +70,25 @@ function AssistantContent({ content }: { content: string }) {
           <h3 className="text-xs font-sans font-semibold text-[#5a8898] uppercase tracking-widest mb-2 mt-3 first:mt-0">{children}</h3>
         ),
         table: ({ children }) => (
-          <div className="overflow-x-auto my-2">
-            <table className="w-full text-xs border-collapse">{children}</table>
+          <div className="overflow-x-auto rounded-[10px] border border-[#c8dde6] my-2">
+            <table className="w-full text-xs border-collapse min-w-[520px]">{children}</table>
           </div>
         ),
+        thead: ({ children }) => (
+          <thead className="bg-[#052838]">{children}</thead>
+        ),
+        tbody: ({ children }) => <tbody>{children}</tbody>,
         th: ({ children }) => (
-          <th className="text-left px-2 py-1.5 bg-[#e8f2f6] text-[#5a8898] font-semibold border border-[#c8dde6] text-[10px] uppercase tracking-wide">
+          <th className="text-left px-3 py-2 text-white font-semibold text-[10px] uppercase tracking-wider first:rounded-tl-[9px] last:rounded-tr-[9px]">
             {children}
           </th>
         ),
         td: ({ children }) => (
-          <td className="px-2 py-1.5 text-[#052838] border border-[#c8dde6]">{children}</td>
+          <td className="px-3 py-2 text-[#052838] text-xs border-t border-[#e8f2f6] whitespace-nowrap">{children}</td>
         ),
-        tr: ({ children }) => <tr className="even:bg-[#f8fbfc]">{children}</tr>,
+        tr: ({ children }) => (
+          <tr className="even:bg-[#f8fbfc] hover:bg-[#edf5f8] transition-colors">{children}</tr>
+        ),
       }}
     >
       {content}
@@ -248,7 +256,7 @@ function RegisterPrompt({
   }
   const handleNo = () => {
     setActed(true)
-    onAction(`No, I'll search again`)
+    onAction(`No, search again for a different patient`)
   }
 
   return (
@@ -343,7 +351,11 @@ function MessageBubble({
         </svg>
       </div>
 
-      <div className="max-w-[85%] sm:max-w-[78%]">
+      <div className={cn(
+        agentLabel === 'CalendarAgent' || agentLabel === 'CALENDAR'
+          ? 'w-full max-w-full'
+          : 'max-w-[85%] sm:max-w-[78%]'
+      )}>
         {/* Label row */}
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[9px] font-sans text-[#8aaab8]">ClinicCare AI</span>

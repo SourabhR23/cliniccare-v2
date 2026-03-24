@@ -85,11 +85,46 @@ Respond ONLY with valid JSON, no other text, no markdown:
 confidence must be 0.0 to 1.0 (your certainty in the classification)."""
 
 
+import re as _re
+
+# Keyword pre-checks: bypass LLM for common patterns the LLM keeps misrouting.
+# These are exact-match regex rules checked BEFORE calling the LLM.
+_RECEPTIONIST_PATTERNS = [
+    r"^yes,?\s+register",          # "Yes, register Akshay Kumar"
+    r"^register\s+new\s+patient",  # "Register new patient ..."
+    r"^no,?\s+(i'?ll?\s+)?search", # "No, I'll search again"
+    r"^no,?\s+search\s+again",     # "No, search again"
+    r"^check\s+in\s+",             # "Check in Riya Shah"
+    r"^find\s+patient",            # "Find patient ..."
+]
+
+def _keyword_route(message: str) -> str | None:
+    """Return agent name if message matches a hard-coded pattern, else None."""
+    lower = message.lower().strip()
+    for pattern in _RECEPTIONIST_PATTERNS:
+        if _re.match(pattern, lower):
+            return "RECEPTIONIST"
+    return None
+
+
 async def supervisor_node(state: AgentState) -> dict:
     last_message = state["messages"][-1].content
     logger.info("supervisor_classifying",
                 thread_id=state.get("thread_id"),
                 message_preview=last_message[:60])
+
+    # ── Keyword pre-check (code-level, never wrong) ──────────
+    keyword_agent = _keyword_route(last_message)
+    if keyword_agent:
+        intent_map = {
+            "RECEPTIONIST": "register_patient" if "register" in last_message.lower() else "search_patient",
+        }
+        logger.info("supervisor_keyword_routed", agent=keyword_agent, message_preview=last_message[:40])
+        return {
+            "current_agent": keyword_agent,
+            "intent": intent_map.get(keyword_agent, "keyword_match"),
+            "confidence": 1.0,
+        }
 
     # Build recent conversation context (last 4 messages, excluding the current one)
     # so the supervisor can resolve short follow-ups like "for next month?"
