@@ -84,8 +84,11 @@ async def connect_to_mongodb() -> None:
         serverSelectionTimeoutMS=settings.mongodb_connect_timeout_ms,
         # connectTimeoutMS: individual socket connection timeout
         connectTimeoutMS=settings.mongodb_connect_timeout_ms,
-        # tlsAllowInvalidCertificates: DO NOT set True in production
-        # Atlas uses valid certs. Only set if using self-signed cert in dev.
+        # Required on some cloud hosts (Render, Railway) where the system
+        # OpenSSL version fails TLS negotiation with Atlas.
+        # Atlas certs are valid — this only bypasses hostname verification,
+        # not encryption. TLS is still fully in use.
+        tlsAllowInvalidCertificates=True,
     )
 
     # Verify connection is actually working

@@ -17,7 +17,7 @@ _llm = make_chat_llm(temperature=0)
 
 SUPERVISOR_SYSTEM_PROMPT = """You are a clinic management supervisor routing staff requests to the correct AI assistant.
 
-Classify the message into exactly one of these agents:
+You will receive the LAST FEW MESSAGES for context. Classify the LATEST user message into exactly one agent.
 
 RECEPTIONIST — Use for FRONT-DESK / ADMINISTRATIVE tasks only:
   - Checking in a patient (new or returning)
@@ -30,49 +30,52 @@ RECEPTIONIST — Use for FRONT-DESK / ADMINISTRATIVE tasks only:
 
 RAG_AGENT — Use for CLINICAL / MEDICAL questions about a patient:
   - Any question about a patient's medical history, visits, diagnoses, treatments
-  - "Give info on this person [name]" — clinical summary
   - "What medications has this patient been on?"
   - "What was the diagnosis at the last visit?"
   - "Any drug interactions for this patient?"
   - "Tell me about [patient name]" / "Patient summary for [name]"
-  - "What conditions does [patient] have?"
   - Pre-visit briefings or clinical overviews
-  - Any question requiring medical record lookup
 
 SCHEDULING — Use for:
-  - Booking a new follow-up or appointment
+  - Booking a NEW follow-up or appointment
   - Rescheduling or cancelling an existing appointment
-  - Checking appointment slot availability
   - "Book appointment for [patient] on [date]"
 
 NOTIFICATION — Use ONLY when EXPLICITLY asked to SEND an email or message:
   - "Send email to the patient"
   - "Send notification / reminder to the patient"
-  - "Notify the doctor"
   - Message must contain an explicit send/email/notify ACTION
 
-CALENDAR — Use for:
+CALENDAR — Use for ANY of these:
   - Querying existing schedule, appointments, or follow-ups
-  - "Are there any follow-ups today?"
-  - "What appointments do we have this week?"
+  - "Are there any follow-ups today / this week / next week / next month?"
+  - "What appointments do we have?"
   - "Show me the schedule for 25 March"
   - "Who has follow-ups pending?"
+  - "How many bookings / appointments are there?"
+  - "How many patients booked?" / "How many new patients booked?"
+  - "Any bookings for [date/period]?"
+  - Count or summary of existing appointments
   - Cancelling or deleting a scheduled event
-  - Any question about EXISTING bookings or scheduled dates
+  - ANY question about EXISTING bookings, scheduled dates, or future schedule
+  - SHORT follow-up time references like "for next month?", "next week?", "in future", "this week?"
+    when the conversation is already about appointments/schedule
 
-UNKNOWN — Use when the request doesn't fit any category.
+UNKNOWN — Use when the request TRULY doesn't fit any category above.
 
 CRITICAL DISTINCTIONS:
-  RAG_AGENT vs RECEPTIONIST for patient queries:
-    "Give info on [patient]" / "Tell me about [patient]" / "Patient summary" → RAG_AGENT (clinical)
-    "What is [patient]'s phone?" / "Find patient [name]" / "Check in [patient]" → RECEPTIONIST (admin)
-
   SCHEDULING vs CALENDAR:
-    SCHEDULING = creating/changing a booking
-    CALENDAR   = reading/querying existing bookings
+    SCHEDULING = creating/changing a NEW booking
+    CALENDAR   = reading/querying/counting EXISTING bookings
+
+  SHORT FOLLOW-UPS: If the last assistant message was about a schedule/calendar result,
+    and the user says something like "for next month?", "what about next week?", "in future" —
+    classify as CALENDAR.
+
+  COUNTING appointments = CALENDAR (not UNKNOWN).
 
 Respond ONLY with valid JSON, no other text, no markdown:
-{"agent": "RECEPTIONIST", "intent": "new_patient_checkin", "confidence": 0.95}
+{"agent": "CALENDAR", "intent": "query_schedule", "confidence": 0.95}
 
 confidence must be 0.0 to 1.0 (your certainty in the classification)."""
 
@@ -82,10 +85,25 @@ async def supervisor_node(state: AgentState) -> dict:
     logger.info("supervisor_classifying",
                 thread_id=state.get("thread_id"),
                 message_preview=last_message[:60])
+
+    # Build recent conversation context (last 4 messages, excluding the current one)
+    # so the supervisor can resolve short follow-ups like "for next month?"
+    recent_msgs = state["messages"][:-1][-4:]
+    context_lines = []
+    for m in recent_msgs:
+        role = "User" if isinstance(m, HumanMessage) else "Assistant"
+        snippet = m.content[:120].replace("\n", " ")
+        context_lines.append(f"{role}: {snippet}")
+    context_block = "\n".join(context_lines)
+    classify_input = (
+        f"Recent conversation:\n{context_block}\n\nLatest message to classify:\n{last_message}"
+        if context_lines else last_message
+    )
+
     try:
         response = await _llm.ainvoke([
             SystemMessage(content=SUPERVISOR_SYSTEM_PROMPT),
-            HumanMessage(content=last_message),
+            HumanMessage(content=classify_input),
         ])
         parsed = json.loads(response.content)
         agent = parsed.get("agent", "UNKNOWN")
@@ -131,6 +149,12 @@ def route_to_agent(state: AgentState) -> str:
     # Block Scheduling and Notification for doctors — those are receptionist duties.
     if staff_role == "doctor" and agent not in ("RAG_AGENT", "CALENDAR"):
         logger.info("supervisor_doctor_route_restricted",
+                    attempted_agent=agent, staff_role=staff_role)
+        return "fallback"
+
+    # Receptionists: cannot access clinical RAG — that's doctor-only.
+    if staff_role == "receptionist" and agent == "RAG_AGENT":
+        logger.info("supervisor_receptionist_rag_blocked",
                     attempted_agent=agent, staff_role=staff_role)
         return "fallback"
 
@@ -187,9 +211,9 @@ async def fallback_node(state: AgentState) -> dict:
         low_confidence_msg = (
             "I wasn't sure how to handle that. Could you clarify what you need?\n\n"
             "1. Check in / register a patient\n"
-            "2. Ask a clinical question about a patient\n"
-            "3. Book or manage an appointment\n"
-            "4. Send a message or notification"
+            "2. Book or manage an appointment\n"
+            "3. View the schedule or follow-ups\n"
+            "4. Send a message or notification to a patient"
         )
 
     messages = {

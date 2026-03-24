@@ -27,29 +27,21 @@ export default function DashboardLayout({
     }
   }, [mounted, token, user, router])
 
-  if (!mounted) {
+  if (!mounted || !token || !user) {
     return (
-      <div className="min-h-screen bg-void flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
-
-  if (!token || !user) {
-    return (
-      <div className="min-h-screen bg-void flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f6f8' }}>
         <Spinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-void flex">
+    <div className="flex h-screen overflow-hidden" style={{ background: '#f0f6f8' }}>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar onMenuToggle={() => setSidebarOpen((v) => !v)} />
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 overflow-auto" style={{ padding: '24px 26px' }}>
           {children}
         </main>
       </div>

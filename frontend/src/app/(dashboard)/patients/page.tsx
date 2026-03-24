@@ -37,7 +37,7 @@ type PatientForm = z.infer<typeof patientSchema>
 type FilterType = 'all' | 'followup' | 'new'
 
 function AllergyList({ items, variant }: { items: string[]; variant: 'allergy' | 'condition' }) {
-  if (!items || items.length === 0) return <span className="text-[rgba(180,200,220,0.25)] text-xs">—</span>
+  if (!items || items.length === 0) return <span className="text-[#8aaab8] text-xs">—</span>
   const shown = items.slice(0, 2)
   const extra = items.length - 2
   return (
@@ -172,8 +172,8 @@ export default function PatientsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold text-ice">Patients</h2>
-          <p className="text-sm text-[rgba(180,200,220,0.45)] mt-0.5">
+          <h2 className="text-lg font-semibold text-[#052838]">Patients</h2>
+          <p className="text-sm text-[#5a8898] mt-0.5">
             {filtered.length} {filtered.length === 1 ? 'patient' : 'patients'}
             {debouncedSearch && ` matching "${debouncedSearch}"`}
           </p>
@@ -190,7 +190,7 @@ export default function PatientsPage() {
       <Card className="p-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgba(180,200,220,0.3)]"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8aaab8]"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -200,7 +200,7 @@ export default function PatientsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, phone..."
-            className="w-full bg-[#121620] text-ice placeholder-[rgba(180,200,220,0.3)] border border-[rgba(212,234,247,0.10)] rounded-[10px] pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/20 transition-all"
+            className="w-full bg-white text-[#052838] placeholder-[#8aaab8] border border-[#c8dde6] rounded-[10px] pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/20 transition-all"
           />
           {isLoading && (
             <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
@@ -215,10 +215,10 @@ export default function PatientsPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                'px-3 py-2 rounded-[8px] text-xs font-mono font-medium uppercase tracking-wider transition-all',
+                'px-3 py-2 rounded-[8px] text-xs font-sans font-medium uppercase tracking-wider transition-all',
                 filter === f
                   ? 'bg-sky/10 text-sky border border-sky/20'
-                  : 'text-[rgba(180,200,220,0.45)] hover:text-ice border border-transparent hover:border-[rgba(212,234,247,0.10)]'
+                  : 'text-[#5a8898] hover:text-[#052838] border border-transparent hover:border-[#c8dde6]'
               )}
             >
               {f === 'followup' ? 'Follow-up' : f}
@@ -232,11 +232,11 @@ export default function PatientsPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px]">
             <thead>
-              <tr className="border-b border-[rgba(212,234,247,0.07)]">
+              <tr className="border-b border-[#c8dde6]">
                 {['Name', 'Age/Sex', 'Phone', 'Blood', 'Allergies', 'Conditions', 'Visits', 'Last Visit', 'Follow-up', ''].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-widest whitespace-nowrap"
+                    className="px-4 py-3 text-left text-[10px] font-sans text-[#8aaab8] uppercase tracking-widest whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -246,10 +246,10 @@ export default function PatientsPage() {
             <tbody>
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse border-b border-[rgba(212,234,247,0.04)]">
+                  <tr key={i} className="animate-pulse border-b border-[#c8dde6]">
                     {Array.from({ length: 10 }).map((_, j) => (
                       <td key={j} className="px-4 py-3.5">
-                        <div className="h-3 bg-white/5 rounded w-3/4" />
+                        <div className="h-3 bg-[#e8f2f6] rounded w-3/4" />
                       </td>
                     ))}
                   </tr>
@@ -257,7 +257,7 @@ export default function PatientsPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-4 py-12 text-center">
-                    <p className="text-[rgba(180,200,220,0.3)] text-sm">
+                    <p className="text-[#8aaab8] text-sm">
                       {debouncedSearch ? `No patients found for "${debouncedSearch}"` : 'No patients found'}
                     </p>
                   </td>
@@ -267,15 +267,15 @@ export default function PatientsPage() {
                   <tr
                     key={p.id}
                     onClick={() => router.push(`/patients/${p.id}`)}
-                    className="border-b border-[rgba(212,234,247,0.04)] hover:bg-white/[0.025] cursor-pointer transition-colors group"
+                    className="border-b border-[#c8dde6] hover:bg-[#e8f2f6] cursor-pointer transition-colors group"
                   >
                     <td className="px-4 py-3.5">
-                      <p className="text-sm font-medium text-ice group-hover:text-sky transition-colors">{p.name}</p>
+                      <p className="text-sm font-medium text-[#052838] group-hover:text-sky transition-colors">{p.name}</p>
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-[rgba(180,200,220,0.65)] whitespace-nowrap">
+                    <td className="px-4 py-3.5 font-sans text-xs text-[#5a8898] whitespace-nowrap">
                       {p.age}y / {p.sex}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-[rgba(180,200,220,0.55)]">{p.phone}</td>
+                    <td className="px-4 py-3.5 font-sans text-xs text-[#5a8898]">{p.phone}</td>
                     <td className="px-4 py-3.5">
                       <Badge variant="default" className="text-[9px]">{p.blood_group}</Badge>
                     </td>
@@ -285,20 +285,20 @@ export default function PatientsPage() {
                     <td className="px-4 py-3.5">
                       <AllergyList items={p.chronic_conditions} variant="condition" />
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-sm text-sky">{p.total_visits}</td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-[rgba(180,200,220,0.5)] whitespace-nowrap">
+                    <td className="px-4 py-3.5 font-sans text-sm text-sky">{p.total_visits}</td>
+                    <td className="px-4 py-3.5 font-sans text-xs text-[#5a8898] whitespace-nowrap">
                       {formatDate(p.last_visit_date)}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-xs whitespace-nowrap">
+                    <td className="px-4 py-3.5 font-sans text-xs whitespace-nowrap">
                       {p.pending_followup_date ? (
                         <span className="text-yellow-400">{formatDate(p.pending_followup_date)}</span>
                       ) : (
-                        <span className="text-[rgba(180,200,220,0.25)]">—</span>
+                        <span className="text-[#8aaab8]">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3.5">
                       <svg
-                        className="w-4 h-4 text-[rgba(180,200,220,0.2)] group-hover:text-sky transition-colors"
+                        className="w-4 h-4 text-[#8aaab8] group-hover:text-sky transition-colors"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

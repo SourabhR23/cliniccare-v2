@@ -16,7 +16,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-medium text-[rgba(180,200,220,0.65)] uppercase tracking-wider"
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: '#1a4858' }}
           >
             {label}
           </label>
@@ -25,19 +26,31 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-[#121620] text-ice placeholder-[rgba(180,200,220,0.3)]',
-            'border border-[rgba(212,234,247,0.10)] rounded-[10px]',
-            'px-3.5 py-2.5 text-sm font-sans',
-            'transition-all duration-150',
-            'focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/20',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
-            error && 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/15',
+            'w-full text-sm font-sans transition-all duration-150',
+            'focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed',
             className
           )}
+          style={{
+            background: '#e8f2f6',
+            border: `1.5px solid ${error ? 'rgba(200,32,32,0.4)' : '#c8dde6'}`,
+            borderRadius: 9,
+            padding: '8px 14px',
+            color: '#052838',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = '#0db89e'
+            e.currentTarget.style.background = '#ffffff'
+            if (props.onFocus) props.onFocus(e)
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = error ? 'rgba(200,32,32,0.4)' : '#c8dde6'
+            e.currentTarget.style.background = '#e8f2f6'
+            if (props.onBlur) props.onBlur(e)
+          }}
           {...props}
         />
         {error && (
-          <p className="text-xs text-red-400 mt-0.5">{error}</p>
+          <p className="text-xs" style={{ color: '#c82020' }}>{error}</p>
         )}
       </div>
     )
@@ -61,7 +74,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-medium text-[rgba(180,200,220,0.65)] uppercase tracking-wider"
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: '#1a4858' }}
           >
             {label}
           </label>
@@ -70,19 +84,21 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-[#121620] text-ice placeholder-[rgba(180,200,220,0.3)]',
-            'border border-[rgba(212,234,247,0.10)] rounded-[10px]',
-            'px-3.5 py-2.5 text-sm font-sans resize-none',
-            'transition-all duration-150',
-            'focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/20',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
-            error && 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/15',
+            'w-full text-sm font-sans resize-none transition-all duration-150',
+            'focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed',
             className
           )}
+          style={{
+            background: '#e8f2f6',
+            border: `1.5px solid ${error ? 'rgba(200,32,32,0.4)' : '#c8dde6'}`,
+            borderRadius: 9,
+            padding: '8px 14px',
+            color: '#052838',
+          }}
           {...props}
         />
         {error && (
-          <p className="text-xs text-red-400 mt-0.5">{error}</p>
+          <p className="text-xs" style={{ color: '#c82020' }}>{error}</p>
         )}
       </div>
     )
@@ -107,7 +123,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-medium text-[rgba(180,200,220,0.65)] uppercase tracking-wider"
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: '#1a4858' }}
           >
             {label}
           </label>
@@ -116,25 +133,27 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-[#121620] text-ice',
-            'border border-[rgba(212,234,247,0.10)] rounded-[10px]',
-            'px-3.5 py-2.5 text-sm font-sans',
-            'transition-all duration-150',
-            'focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/20',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
-            error && 'border-red-500/40',
+            'w-full text-sm font-sans transition-all duration-150',
+            'focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed',
             className
           )}
+          style={{
+            background: '#e8f2f6',
+            border: `1.5px solid ${error ? 'rgba(200,32,32,0.4)' : '#c8dde6'}`,
+            borderRadius: 9,
+            padding: '8px 14px',
+            color: '#052838',
+          }}
           {...props}
         >
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-[#121620] text-ice">
+            <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
         </select>
         {error && (
-          <p className="text-xs text-red-400 mt-0.5">{error}</p>
+          <p className="text-xs" style={{ color: '#c82020' }}>{error}</p>
         )}
       </div>
     )

@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     smtp_from_name: str = "ClinicCare"
     smtp_from_email: str
 
+    # ── COHERE ───────────────────────────────────────────────
+    cohere_api_key: Optional[str] = None          # for Cohere Rerank API
+    cohere_rerank_model: str = "rerank-english-v3.0"
+
     # ── OPENFDA ──────────────────────────────────────────────
     openfda_api_key: Optional[str] = None
     openfda_base_url: str = "https://api.fda.gov/drug"

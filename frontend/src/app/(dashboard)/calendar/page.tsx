@@ -99,13 +99,13 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-ice">Calendar</h2>
-          <p className="text-sm text-[rgba(180,200,220,0.45)] mt-0.5">
+          <h2 className="text-lg font-semibold text-[#052838]">Calendar</h2>
+          <p className="text-sm text-[#5a8898] mt-0.5">
             {user?.role === 'receptionist' ? 'All appointments & follow-ups' : 'Your patients\' appointments'}
           </p>
         </div>
         {/* Legend */}
-        <div className="flex items-center gap-4 text-xs font-mono text-[rgba(180,200,220,0.5)]">
+        <div className="flex items-center gap-4 text-xs font-sans text-[#5a8898]">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-sky inline-block" />
             Appointment
@@ -121,28 +121,28 @@ export default function CalendarPage() {
         {/* Calendar grid */}
         <Card className="xl:col-span-2 overflow-hidden">
           {/* Month navigation */}
-          <div className="px-5 py-4 border-b border-[rgba(212,234,247,0.07)] flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-[#c8dde6] flex items-center justify-between">
             <button
               onClick={prevMonth}
-              className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-[rgba(180,200,220,0.55)] hover:text-ice transition-colors"
+              className="w-8 h-8 rounded-lg hover:bg-[#e8f2f6] flex items-center justify-center text-[#5a8898] hover:text-[#052838] transition-colors"
             >
               ‹
             </button>
-            <h3 className="text-sm font-semibold text-ice">
+            <h3 className="text-sm font-semibold text-[#052838]">
               {MONTH_NAMES[month]} {year}
             </h3>
             <button
               onClick={nextMonth}
-              className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-[rgba(180,200,220,0.55)] hover:text-ice transition-colors"
+              className="w-8 h-8 rounded-lg hover:bg-[#e8f2f6] flex items-center justify-center text-[#5a8898] hover:text-[#052838] transition-colors"
             >
               ›
             </button>
           </div>
 
           {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-[rgba(212,234,247,0.05)]">
+          <div className="grid grid-cols-7 border-b border-[#c8dde6]">
             {DAY_NAMES.map(d => (
-              <div key={d} className="py-2 text-center text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase tracking-widest">
+              <div key={d} className="py-2 text-center text-[10px] font-sans text-[#8aaab8] uppercase tracking-widest">
                 {d}
               </div>
             ))}
@@ -152,7 +152,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7">
             {/* Empty cells before first day */}
             {Array.from({ length: firstDay }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-[72px] border-b border-r border-[rgba(212,234,247,0.04)]" />
+              <div key={`empty-${i}`} className="min-h-[72px] border-b border-r border-[#c8dde6]" />
             ))}
 
             {/* Day cells */}
@@ -168,13 +168,13 @@ export default function CalendarPage() {
                   key={day}
                   onClick={() => setSelectedDay(day === selectedDay ? null : day)}
                   className={cn(
-                    'min-h-[72px] p-2 border-b border-r border-[rgba(212,234,247,0.04)] cursor-pointer transition-all duration-100',
-                    isSelected ? 'bg-sky/10' : 'hover:bg-white/[0.02]',
+                    'min-h-[72px] p-2 border-b border-r border-[#c8dde6] cursor-pointer transition-all duration-100',
+                    isSelected ? 'bg-sky/10' : 'hover:bg-[#e8f2f6]',
                   )}
                 >
                   <div className={cn(
-                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-mono mb-1.5',
-                    isToday ? 'bg-sky text-[#0a0c10] font-bold' : 'text-[rgba(180,200,220,0.6)]',
+                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-sans mb-1.5',
+                    isToday ? 'bg-sky text-[#0a0c10] font-bold' : 'text-[#5a8898]',
                     isSelected && !isToday ? 'text-sky' : '',
                   )}>
                     {day}
@@ -196,12 +196,12 @@ export default function CalendarPage() {
                         const capacityPct = apptCount / 10
                         return (
                           <>
-                            <p className="text-[9px] font-mono text-[rgba(180,200,220,0.3)]">
+                            <p className="text-[9px] font-sans text-[#8aaab8]">
                               {dayEvents.length} event{dayEvents.length > 1 ? 's' : ''}
                             </p>
                             {apptCount > 0 && (
                               <div className="flex items-center gap-0.5 mt-0.5">
-                                <div className="h-0.5 rounded-full bg-white/5 flex-1 overflow-hidden">
+                                <div className="h-0.5 rounded-full bg-[#e8f2f6] flex-1 overflow-hidden">
                                   <div
                                     className={cn(
                                       'h-full rounded-full transition-all',
@@ -212,9 +212,9 @@ export default function CalendarPage() {
                                   />
                                 </div>
                                 <span className={cn(
-                                  'text-[8px] font-mono flex-shrink-0',
+                                  'text-[8px] font-sans flex-shrink-0',
                                   capacityPct >= 1 ? 'text-red-400' :
-                                  capacityPct >= 0.7 ? 'text-amber-400' : 'text-[rgba(180,200,220,0.3)]'
+                                  capacityPct >= 0.7 ? 'text-amber-400' : 'text-[#8aaab8]'
                                 )}>
                                   {apptCount}/10
                                 </span>
@@ -233,50 +233,50 @@ export default function CalendarPage() {
 
         {/* Side panel — selected day events */}
         <Card>
-          <div className="px-5 py-4 border-b border-[rgba(212,234,247,0.07)]">
-            <h3 className="text-sm font-semibold text-ice">
+          <div className="px-5 py-4 border-b border-[#c8dde6]">
+            <h3 className="text-sm font-semibold text-[#052838]">
               {selectedDay
                 ? `${MONTH_NAMES[month]} ${selectedDay}, ${year}`
                 : 'Select a day'}
             </h3>
             {selectedDay && (
-              <p className="text-xs text-[rgba(180,200,220,0.4)] mt-0.5 font-mono">
+              <p className="text-xs text-[#5a8898] mt-0.5 font-sans">
                 {selectedEvents.length} event{selectedEvents.length !== 1 ? 's' : ''}
               </p>
             )}
           </div>
 
-          <div className="divide-y divide-[rgba(212,234,247,0.04)] max-h-[500px] overflow-y-auto">
+          <div className="divide-y divide-[#c8dde6] max-h-[500px] overflow-y-auto">
             {!selectedDay ? (
               <div className="px-5 py-10 text-center">
-                <p className="text-sm text-[rgba(180,200,220,0.25)]">Click a day to see events</p>
+                <p className="text-sm text-[#8aaab8]">Click a day to see events</p>
               </div>
             ) : isLoading ? (
               <div className="px-5 py-6">
                 <div className="animate-pulse space-y-3">
-                  {[1,2].map(i => <div key={i} className="h-16 bg-white/5 rounded-[10px]" />)}
+                  {[1,2].map(i => <div key={i} className="h-16 bg-[#e8f2f6] rounded-[10px]" />)}
                 </div>
               </div>
             ) : selectedEvents.length === 0 ? (
               <div className="px-5 py-10 text-center">
-                <p className="text-sm text-[rgba(180,200,220,0.25)]">No events on this day</p>
+                <p className="text-sm text-[#8aaab8]">No events on this day</p>
               </div>
             ) : (
               selectedEvents.map(ev => (
                 <div key={ev.id} className="px-5 py-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-ice truncate">{ev.patient_name || '—'}</p>
-                      <p className="text-[11px] font-mono text-sky mt-0.5">
+                      <p className="text-sm font-medium text-[#052838] truncate">{ev.patient_name || '—'}</p>
+                      <p className="text-[11px] font-sans text-sky mt-0.5">
                         {ev.slot || (ev.type === 'followup' ? 'Follow-up (no time set)' : 'Time TBD')}
                       </p>
                       {ev.doctor_name && (
-                        <p className="text-[11px] text-[rgba(180,200,220,0.4)] mt-0.5 truncate">
+                        <p className="text-[11px] text-[#5a8898] mt-0.5 truncate">
                           {ev.doctor_name}
                         </p>
                       )}
                       {ev.reason && (
-                        <p className="text-[11px] text-[rgba(180,200,220,0.35)] mt-0.5 truncate">
+                        <p className="text-[11px] text-[#8aaab8] mt-0.5 truncate">
                           {ev.reason}
                         </p>
                       )}
@@ -305,7 +305,7 @@ export default function CalendarPage() {
                           </button>
                           <button
                             onClick={() => setCancelingId(null)}
-                            className="text-xs text-[rgba(180,200,220,0.4)] hover:text-ice"
+                            className="text-xs text-[#5a8898] hover:text-[#052838]"
                           >
                             No
                           </button>
@@ -313,7 +313,7 @@ export default function CalendarPage() {
                       ) : (
                         <button
                           onClick={() => setCancelingId(ev.id)}
-                          className="text-[11px] text-[rgba(180,200,220,0.3)] hover:text-red-400 transition-colors"
+                          className="text-[11px] text-[#8aaab8] hover:text-red-400 transition-colors"
                         >
                           Cancel appointment
                         </button>
@@ -326,25 +326,25 @@ export default function CalendarPage() {
           </div>
 
           {/* Monthly summary */}
-          <div className="px-5 py-3 border-t border-[rgba(212,234,247,0.07)]">
-            <p className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase tracking-widest mb-2">
+          <div className="px-5 py-3 border-t border-[#c8dde6]">
+            <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-widest mb-2">
               {MONTH_NAMES[month]} Summary
             </p>
             <div className="flex gap-4 mb-3">
               <div>
-                <p className="text-lg font-mono text-sky font-bold">
+                <p className="text-lg font-sans text-sky font-bold">
                   {events.filter(e => e.type === 'appointment' && e.status !== 'cancelled').length}
                 </p>
-                <p className="text-[10px] text-[rgba(180,200,220,0.4)]">Appointments</p>
+                <p className="text-[10px] text-[#5a8898]">Appointments</p>
               </div>
               <div>
-                <p className="text-lg font-mono text-amber-400 font-bold">
+                <p className="text-lg font-sans text-amber-400 font-bold">
                   {events.filter(e => e.type === 'followup').length}
                 </p>
-                <p className="text-[10px] text-[rgba(180,200,220,0.4)]">Follow-ups</p>
+                <p className="text-[10px] text-[#5a8898]">Follow-ups</p>
               </div>
             </div>
-            <div className="text-[10px] font-mono text-[rgba(180,200,220,0.25)] space-y-0.5 border-t border-[rgba(212,234,247,0.05)] pt-2">
+            <div className="text-[10px] font-sans text-[#8aaab8] space-y-0.5 border-t border-[#c8dde6] pt-2">
               <p>Clinic hours: 9:00 AM – 5:00 PM</p>
               <p>Max capacity: 10 patients/doctor/day</p>
               <div className="flex items-center gap-2 mt-1">

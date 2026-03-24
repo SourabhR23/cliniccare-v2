@@ -4,17 +4,19 @@ interface CardProps {
   children: React.ReactNode
   className?: string
   onClick?: () => void
+  style?: React.CSSProperties
 }
 
-export function Card({ children, className, onClick }: CardProps) {
+export function Card({ children, className, onClick, style }: CardProps) {
   return (
     <div
       onClick={onClick}
       className={cn(
-        'bg-[rgba(212,234,247,0.04)] backdrop-blur-[28px] border border-[rgba(212,234,247,0.10)] rounded-[14px]',
-        onClick && 'cursor-pointer hover:border-[rgba(212,234,247,0.18)] hover:bg-[rgba(212,234,247,0.06)] transition-all duration-150',
+        'bg-white border border-[#c8dde6] rounded-[14px]',
+        onClick && 'cursor-pointer hover:border-[#a0c4d4] hover:shadow-md transition-all duration-200',
         className
       )}
+      style={{ boxShadow: '0 1px 8px rgba(5,40,56,0.06)', ...style }}
     >
       {children}
     </div>
@@ -27,33 +29,61 @@ interface StatCardProps {
   subtext?: string
   icon?: React.ReactNode
   accent?: boolean
+  accentColor?: string
   className?: string
+  delta?: { value: string; up?: boolean; neutral?: boolean }
 }
 
-export function StatCard({ label, value, subtext, icon, accent, className }: StatCardProps) {
+export function StatCard({ label, value, subtext, icon, accent, accentColor, className, delta }: StatCardProps) {
+  const color = accentColor || '#0a8878'
   return (
-    <Card className={cn('p-5', className)}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[rgba(180,200,220,0.55)] text-xs font-medium uppercase tracking-wider mb-2">
-            {label}
-          </p>
-          <p
-            className={cn(
-              'font-mono text-3xl font-medium',
-              accent ? 'text-sky' : 'text-ice'
-            )}
-          >
-            {value}
-          </p>
-          {subtext && (
-            <p className="text-[rgba(180,200,220,0.4)] text-xs mt-1.5">{subtext}</p>
-          )}
+    <Card className={cn('p-5 relative overflow-hidden', className)}
+      style={{
+        boxShadow: '0 1px 8px rgba(5,40,56,0.06)',
+      }}
+    >
+      {/* Bottom accent bar */}
+      <div
+        className="absolute bottom-0 left-0 right-0"
+        style={{ height: 3, background: color, borderRadius: '0 0 14px 14px' }}
+      />
+
+      {icon && (
+        <div
+          className="w-10 h-10 rounded-[11px] flex items-center justify-center mb-3 flex-shrink-0"
+          style={{ background: `${color}18` }}
+        >
+          <span style={{ color, fontSize: 18 }}>{icon}</span>
         </div>
-        {icon && (
-          <div className="text-[rgba(180,200,220,0.3)] mt-1 flex-shrink-0">{icon}</div>
-        )}
-      </div>
+      )}
+
+      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#5a8898' }}>
+        {label}
+      </p>
+      <p
+        className="leading-none"
+        style={{
+          fontFamily: 'var(--font-literata)',
+          fontSize: 36,
+          fontWeight: 400,
+          color: accent ? color : '#052838',
+        }}
+      >
+        {value}
+      </p>
+      {delta && (
+        <p
+          className="text-[11px] font-semibold mt-1.5 flex items-center gap-1"
+          style={{
+            color: delta.neutral ? '#5a8898' : delta.up ? '#0a6840' : '#c82020',
+          }}
+        >
+          {!delta.neutral && (delta.up ? '↑' : '↓')} {delta.value}
+        </p>
+      )}
+      {subtext && !delta && (
+        <p className="text-xs mt-1.5" style={{ color: '#5a8898' }}>{subtext}</p>
+      )}
     </Card>
   )
 }

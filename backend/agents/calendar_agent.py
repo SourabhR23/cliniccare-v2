@@ -285,7 +285,9 @@ async def _handle_query(state: AgentState, db, message: str) -> dict:
     event_type = params.get("event_type", "both")
     show_slots = params.get("show_slots", False)
 
-    results = []
+    # Structured rows for markdown table
+    rows: list[dict] = []
+    capacity_notes: list[str] = []
 
     # ── Appointments ──────────────────────────────────────────
     if event_type in ("appointment", "both"):
@@ -294,17 +296,16 @@ async def _handle_query(state: AgentState, db, message: str) -> dict:
             "status": {"$ne": "cancelled"},
         }
         if doctor_scope_id:
-            appt_filter["doctor_id"] = doctor_scope_id  # Doctor sees only own appointments
+            appt_filter["doctor_id"] = doctor_scope_id
         if patient_name_filter:
             appt_filter["patient_name"] = {
                 "$regex": re.escape(patient_name_filter), "$options": "i"
             }
-        if doctor_name_filter and not doctor_scope_id:  # Don't override doctor scope
+        if doctor_name_filter and not doctor_scope_id:
             appt_filter["doctor_name"] = {
                 "$regex": re.escape(doctor_name_filter), "$options": "i"
             }
 
-        # Group by date to show capacity
         date_doctor_counts: dict[str, dict[str, int]] = {}
         cursor = db["appointments"].find(appt_filter).sort("appointment_date", 1)
         async for doc in cursor:
@@ -315,23 +316,22 @@ async def _handle_query(state: AgentState, db, message: str) -> dict:
             date_doctor_counts[appt_date][doc_id] = \
                 date_doctor_counts[appt_date].get(doc_id, 0) + 1
 
-            slot = doc.get("appointment_slot") or "slot TBD"
-            results.append(
-                f"• APPOINTMENT — {doc.get('patient_name', 'Unknown')} | "
-                f"{appt_date} {slot} | "
-                f"Dr: {doc.get('doctor_name') or 'Not assigned'} | "
-                f"{doc.get('status', 'scheduled')}"
-            )
+            rows.append({
+                "type": "Appointment",
+                "patient": doc.get("patient_name", "Unknown"),
+                "date": appt_date,
+                "time": doc.get("appointment_slot") or "—",
+                "doctor": doc.get("doctor_name") or "Not assigned",
+                "status": doc.get("status", "scheduled").capitalize(),
+            })
 
-        # Add capacity summary per date/doctor if slots requested
+        # Capacity notes if slots requested
         if show_slots and date_doctor_counts:
-            capacity_lines = []
             for d, docs in sorted(date_doctor_counts.items()):
                 for doc_id, count in docs.items():
                     doc_user = await db["users"].find_one({"_id": doc_id}, {"name": 1})
                     doc_display = doc_user["name"] if doc_user else doc_id
                     remaining = MAX_PATIENTS_PER_DAY - count
-                    # Get booked slots
                     booked = [
                         doc2.get("appointment_slot", "")
                         async for doc2 in db["appointments"].find(
@@ -341,13 +341,11 @@ async def _handle_query(state: AgentState, db, message: str) -> dict:
                         )
                     ]
                     avail = [s for s in CLINIC_SLOTS if s not in booked]
-                    avail_preview = ", ".join(avail[:4]) + ("..." if len(avail) > 4 else "")
-                    capacity_lines.append(
-                        f"  {d} — {doc_display}: {count}/{MAX_PATIENTS_PER_DAY} booked, "
-                        f"{remaining} remaining. Available: {avail_preview}"
+                    avail_preview = ", ".join(avail[:4]) + ("…" if len(avail) > 4 else "")
+                    capacity_notes.append(
+                        f"**{d}** — {doc_display}: {count}/{MAX_PATIENTS_PER_DAY} booked, "
+                        f"{remaining} slots remaining. Available: {avail_preview}"
                     )
-            if capacity_lines:
-                results.append("\nCapacity:\n" + "\n".join(capacity_lines))
 
     # ── Follow-ups ────────────────────────────────────────────
     if event_type in ("followup", "both"):
@@ -358,7 +356,7 @@ async def _handle_query(state: AgentState, db, message: str) -> dict:
             },
         }
         if doctor_scope_id:
-            followup_filter["personal.assigned_doctor_id"] = doctor_scope_id  # Doctor sees own patients only
+            followup_filter["personal.assigned_doctor_id"] = doctor_scope_id
         if patient_name_filter:
             followup_filter["personal.name"] = {
                 "$regex": re.escape(patient_name_filter), "$options": "i"
@@ -386,23 +384,42 @@ async def _handle_query(state: AgentState, db, message: str) -> dict:
             else:
                 followup_date = str(followup_date)[:10] if followup_date else "?"
 
-            results.append(
-                f"• FOLLOW-UP — {p.get('personal', {}).get('name', 'Unknown')} | "
-                f"{followup_date} | "
-                f"Dr: {doctor_name_cache.get(doc_id, 'Not assigned')}"
-            )
+            rows.append({
+                "type": "Follow-up",
+                "patient": p.get("personal", {}).get("name", "Unknown"),
+                "date": followup_date,
+                "time": "—",
+                "doctor": doctor_name_cache.get(doc_id, "Not assigned"),
+                "status": "Pending",
+            })
+
+    # Sort all rows by date then time
+    rows.sort(key=lambda r: (r["date"], r["time"]))
 
     logger.info("calendar_query_complete",
-                date_start=date_start, date_end=date_end, results=len(results))
+                date_start=date_start, date_end=date_end, results=len(rows))
 
-    if not results:
-        period = f"on {date_start}" if date_start == date_end else f"from {date_start} to {date_end}"
+    period = f"on {date_start}" if date_start == date_end else f"from {date_start} to {date_end}"
+
+    if not rows:
         reply = f"No appointments or follow-ups found {period}."
     else:
-        period = f"on {date_start}" if date_start == date_end else f"from {date_start} to {date_end}"
-        # Remove capacity lines from count
-        event_count = len([r for r in results if r.startswith("•")])
-        header = f"Schedule {period} ({event_count} event{'s' if event_count != 1 else ''}):"
-        reply = header + "\n\n" + "\n".join(results)
+        count = len(rows)
+        header = f"**Schedule {period} — {count} event{'s' if count != 1 else ''}**\n"
+
+        # Markdown table
+        table = (
+            "| Type | Patient | Date | Time | Doctor | Status |\n"
+            "|------|---------|------|------|--------|--------|\n"
+        )
+        for r in rows:
+            table += (
+                f"| {r['type']} | {r['patient']} | {r['date']} "
+                f"| {r['time']} | {r['doctor']} | {r['status']} |\n"
+            )
+
+        reply = header + "\n" + table
+        if capacity_notes:
+            reply += "\n**Capacity:**\n" + "\n".join(f"- {n}" for n in capacity_notes)
 
     return {"messages": [AIMessage(content=reply)], "current_agent": "CALENDAR"}

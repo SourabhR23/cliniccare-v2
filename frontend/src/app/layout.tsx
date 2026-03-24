@@ -1,20 +1,21 @@
 import type { Metadata } from 'next'
-import { Manrope, Azeret_Mono } from 'next/font/google'
+import { Sora, Literata } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { Providers } from '@/components/providers'
 import './globals.css'
 
-const manrope = Manrope({
+const sora = Sora({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-manrope',
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-sora',
   display: 'swap',
 })
 
-const azeretMono = Azeret_Mono({
+const literata = Literata({
   subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-azeret-mono',
+  weight: ['300', '400', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-literata',
   display: 'swap',
 })
 
@@ -29,19 +30,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${manrope.variable} ${azeretMono.variable}`}>
+    <html lang="en" className={`${sora.variable} ${literata.variable}`}>
       <body>
         <Providers>
           {children}
           <Toaster
-            theme="dark"
+            theme="light"
             position="top-right"
             toastOptions={{
               style: {
-                background: '#121620',
-                border: '1px solid rgba(212,234,247,0.10)',
-                color: '#d4eaf7',
-                fontFamily: 'var(--font-manrope)',
+                background: '#ffffff',
+                border: '1px solid #c8dde6',
+                color: '#052838',
+                fontFamily: 'var(--font-sora)',
+                boxShadow: '0 3px 18px rgba(5,40,56,0.10)',
               },
             }}
           />

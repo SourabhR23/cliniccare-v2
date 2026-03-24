@@ -74,14 +74,15 @@ Today's date: {today}
 
 Extract:
 1. appointment_date: Convert to ISO format YYYY-MM-DD.
-   Examples: "22 march 2026" → "2026-03-22", "25 march" → "2026-03-25", "tomorrow" → tomorrow's date.
-   If no date mentioned → null
-2. appointment_slot: Time slot if mentioned (e.g. "10:30 AM", "2pm", "morning"). If not mentioned → null
+   Examples: "22 march 2026" → "2026-03-22", "25 march" → "2026-03-25", "tomorrow" → tomorrow's date,
+   "next week" → next monday from today. If no date mentioned → null
+2. appointment_slot: Time slot if mentioned (e.g. "10:30 AM", "2pm", "morning", "09:00 AM"). If not mentioned → null
 3. followup_reason: Reason/purpose if mentioned. If not mentioned → null
 4. patient_name_in_message: Patient name mentioned in the message (e.g. "Ajay Varma", "patient SR"). If none → null
+5. doctor_name_in_message: Doctor name mentioned in the message (e.g. "Dr. Rohan", "doctor rohan", "Dr Mehta"). If none → null
 
 Respond ONLY with valid JSON:
-{{"appointment_date": "2026-03-25", "appointment_slot": "10:30 AM", "followup_reason": null, "patient_name_in_message": "Ajay Varma"}}"""
+{{"appointment_date": "2026-03-25", "appointment_slot": null, "followup_reason": null, "patient_name_in_message": "Ajay Varma", "doctor_name_in_message": "Dr. Rohan"}}"""
 
 
 async def extract_appointment_details(state: AgentState, db) -> dict:
@@ -129,12 +130,14 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         appointment_slot = parsed.get("appointment_slot")
         followup_reason = parsed.get("followup_reason")
         patient_name_in_msg = parsed.get("patient_name_in_message")
+        doctor_name_in_msg = parsed.get("doctor_name_in_message")
     except Exception as e:
         logger.warning("scheduling_extract_parse_error", error=str(e))
         appointment_date = None
         appointment_slot = None
         followup_reason = None
         patient_name_in_msg = None
+        doctor_name_in_msg = None
 
     # ── Step 2: Resolve patient from DB if not in state ──────
     patient_id = state.get("patient_id")
@@ -142,6 +145,7 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
     patient_email = state.get("patient_email")
     assigned_doctor_id = state.get("assigned_doctor_id")
     assigned_doctor_name = state.get("assigned_doctor_name")
+    doctor_name_in_msg = doctor_name_in_msg or None
 
     if not patient_id:
         lookup_name = patient_name_in_msg or patient_name
@@ -171,14 +175,13 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         )
 
         if not patient_doc:
+            import json as _json
+            ui_payload = _json.dumps({
+                "type": "register_prompt",
+                "patient_name": lookup_name,
+            })
             return {
-                "messages": [AIMessage(
-                    content=(
-                        f"I couldn't find a patient named '{lookup_name}' in the system. "
-                        "Please check the name or register the patient first using: "
-                        "'Register new patient [name]'."
-                    )
-                )],
+                "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
                 "intent": "abort",
             }
 
@@ -188,8 +191,23 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         patient_email = str(email_val) if email_val else None
         assigned_doctor_id = patient_doc["personal"].get("assigned_doctor_id")
 
-        # Fetch doctor name
-        if assigned_doctor_id:
+        # Try to find requested doctor by name first, then fall back to assigned
+        if doctor_name_in_msg:
+            doc_by_name = await db["users"].find_one(
+                {
+                    "name": {"$regex": re.escape(doctor_name_in_msg), "$options": "i"},
+                    "role": "doctor",
+                },
+                {"_id": 1, "name": 1},
+            )
+            if doc_by_name:
+                assigned_doctor_id = doc_by_name["_id"]
+                assigned_doctor_name = doc_by_name["name"]
+                logger.info("scheduling_doctor_resolved_by_name",
+                            doctor=assigned_doctor_name)
+
+        # Fetch doctor name if not yet resolved
+        if assigned_doctor_id and not assigned_doctor_name:
             doc_user = await db["users"].find_one(
                 {"_id": assigned_doctor_id}, {"name": 1}
             )
@@ -199,32 +217,67 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         logger.info("scheduling_patient_resolved",
                     patient_id=patient_id, patient_name=patient_name)
 
-    # ── Step 3: Validate required fields ────────────────────
-    missing = []
+    # ── Step 3: Require appointment date ────────────────────
     if not appointment_date:
-        missing.append("appointment date (e.g. '25 March 2026')")
-    if not patient_email:
-        missing.append("patient email address (needed to send confirmation)")
-
-    if missing:
         return {
             "messages": [AIMessage(
                 content=(
-                    f"I have the patient ({patient_name}) but still need: "
-                    + " and ".join(missing)
-                    + ". Please provide the missing information."
+                    f"I found **{patient_name}**"
+                    + (f" (assigned to {assigned_doctor_name})" if assigned_doctor_name else "")
+                    + ". What date would you like to book the appointment? "
+                    "For example: 'on 25 March' or 'next Monday'."
                 )
             )],
-            # Persist what we already resolved so next turn skips lookup
+            "patient_id": patient_id,
+            "patient_name": patient_name,
+            "patient_email": patient_email,
+            "assigned_doctor_id": assigned_doctor_id,
+            "assigned_doctor_name": assigned_doctor_name,
+            "followup_reason": followup_reason,
+            "intent": "abort",
+        }
+
+    # ── Step 4: Show slot picker if no slot selected yet ────
+    if not appointment_slot:
+        # Fetch available slots from DB for this doctor + date
+        booked = await _get_booked_slots(db, assigned_doctor_id or "", appointment_date) if assigned_doctor_id else []
+        available_slots = [s for s in CLINIC_SLOTS if s not in booked]
+
+        if not available_slots:
+            next_day, next_slots = await _find_next_available_day(
+                db, assigned_doctor_id or "", appointment_date
+            ) if assigned_doctor_id else ("", [])
+            if next_day and next_slots:
+                available_slots = next_slots
+                appointment_date = next_day
+
+        import json as _json
+        ui_payload = _json.dumps({
+            "type": "slot_picker",
+            "patient_name": patient_name,
+            "patient_id": str(patient_id),
+            "doctor_name": assigned_doctor_name or "Doctor",
+            "doctor_id": str(assigned_doctor_id) if assigned_doctor_id else "",
+            "appointment_date": appointment_date,
+            "slots": available_slots,
+            "reason": followup_reason or "",
+        })
+        logger.info("scheduling_showing_slot_picker",
+                    patient_id=patient_id, date=appointment_date,
+                    slots_available=len(available_slots))
+        return {
+            "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
             "patient_id": patient_id,
             "patient_name": patient_name,
             "patient_email": patient_email,
             "assigned_doctor_id": assigned_doctor_id,
             "assigned_doctor_name": assigned_doctor_name,
             "appointment_date": appointment_date,
-            "appointment_slot": appointment_slot,
             "followup_reason": followup_reason,
-            "intent": "abort",
+            "scheduling_retry_count": 0,
+            "reminder_sent": False,
+            "email_sent": False,
+            "intent": "slot_selection",
         }
 
     logger.info("scheduling_details_extracted",
@@ -355,10 +408,11 @@ def route_after_availability(state: AgentState) -> str:
 
 
 async def confirm_booking(state: AgentState, db) -> dict:
-    import uuid
+    import uuid, json as _json
     from datetime import datetime
+    appt_id = "APT" + uuid.uuid4().hex[:8].upper()
     doc = {
-        "_id": "APT" + uuid.uuid4().hex[:8].upper(),
+        "_id": appt_id,
         "patient_id": state.get("patient_id"),
         "patient_name": state.get("patient_name"),
         "doctor_id": state.get("assigned_doctor_id"),
@@ -371,15 +425,27 @@ async def confirm_booking(state: AgentState, db) -> dict:
         "created_at": datetime.utcnow().isoformat(),
     }
     await db["appointments"].insert_one(doc)
-    logger.info("appointment_booked", id=doc["_id"])
+    logger.info("appointment_booked", id=appt_id)
     conf_state = {**state, "email_type": "confirmation"}
     composed = await compose_email(conf_state)
+    email_sent = False
     if composed.get("email_body"):
-        await send_email({**conf_state, **composed})
+        result = await send_email({**conf_state, **composed})
+        email_sent = result.get("email_sent", False)
+
+    ui_payload = _json.dumps({
+        "type": "booking_confirm",
+        "appointment_id": appt_id,
+        "patient_name": state.get("patient_name", ""),
+        "doctor_name": state.get("assigned_doctor_name", ""),
+        "appointment_date": state.get("appointment_date", ""),
+        "appointment_slot": state.get("appointment_slot", ""),
+        "reason": state.get("followup_reason") or "General Consultation",
+        "patient_email": state.get("patient_email") or "",
+        "email_sent": email_sent,
+    })
     return {
-        "messages": [AIMessage(
-            content=f"Appointment scheduled for {state['patient_name']} "
-                    f"on {state['appointment_date']}. Confirmation email sent.")],
+        "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
         "intent": "dormant",
     }
 

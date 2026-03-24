@@ -15,10 +15,11 @@ export function Spinner({ size = 'md', className }: SpinnerProps) {
   return (
     <div
       className={cn(
-        'border-sky border-t-transparent rounded-full animate-spin',
+        'border-t-transparent rounded-full animate-spin',
         sizeStyles[size],
         className
       )}
+      style={{ borderColor: '#0db89e', borderTopColor: 'transparent' }}
       role="status"
       aria-label="Loading"
     />

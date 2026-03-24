@@ -198,25 +198,25 @@ async def fetch_patient_record(state: AgentState, tools: list) -> dict:
 # NODE 2b — COLLECT INFO (new patient)
 # ─────────────────────────────────────────────────────────────
 
-COLLECT_INFO_PROMPT = """You are registering a new patient at a clinic.
+COLLECT_INFO_PROMPT = """You are registering a new patient at a clinic. Collect one field at a time.
 
-Collect the following required fields through conversation:
-  - full_name (required)
-  - date_of_birth (required, format: YYYY-MM-DD)
-  - sex (required: M/F/O)
-  - phone (required, 10 digits)
-  - assigned_doctor_id (required — use get_doctors_list tool to show options)
+Required fields (in order):
+  1. full_name — patient's full name
+  2. date_of_birth — format YYYY-MM-DD (ask as "date of birth" in natural language)
+  3. sex — M, F, or O
+  4. phone — 10-digit mobile number
+  5. assigned_doctor_id — use get_doctors_list tool to show available doctors and let the user pick
 
-Optional:
+Optional (ask only after required fields are done):
   - email
   - address
-  - emergency_contact
 
-Current collected fields: {collected_fields}
+RULES:
+- Ask for EXACTLY ONE missing field at a time. Do not ask multiple fields together.
+- When asking about the doctor, ALWAYS call get_doctors_list tool first, then present the list.
+- Once all required fields are collected, say EXACTLY: "All information collected. Ready to register."
 
-If all required fields are present, say "All information collected. Ready to register."
-Otherwise, ask for the next missing field in a friendly, conversational way.
-Use get_doctors_list tool when asking about doctor assignment."""
+Current collected fields: {collected_fields}"""
 
 
 async def collect_info(state: AgentState, tools: list) -> dict:
@@ -268,22 +268,30 @@ async def collect_info(state: AgentState, tools: list) -> dict:
 
 
 def _extract_fields_from_messages(messages: list, existing: dict) -> dict:
-    """
-    Simple field extraction from message history.
-    In production: use structured extraction with Pydantic output parser.
-    """
+    """Extract patient fields from the full conversation so far."""
     import re
     collected = dict(existing)
-    for msg in messages:
-        content = getattr(msg, "content", "")
-        # Phone: 10 consecutive digits
-        phone_match = re.search(r"\b(\d{10})\b", content)
-        if phone_match and "phone" not in collected:
+    full_text = " ".join(getattr(m, "content", "") for m in messages)
+
+    # Phone: 10 consecutive digits
+    if "phone" not in collected:
+        phone_match = re.search(r"\b(\d{10})\b", full_text)
+        if phone_match:
             collected["phone"] = phone_match.group(1)
-        # Date: YYYY-MM-DD
-        date_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", content)
-        if date_match and "date_of_birth" not in collected:
+
+    # Date of birth: YYYY-MM-DD
+    if "date_of_birth" not in collected:
+        date_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", full_text)
+        if date_match:
             collected["date_of_birth"] = date_match.group(1)
+
+    # Sex: M/F/O mentioned as a word
+    if "sex" not in collected:
+        sex_match = re.search(r"\b(male|female|other|M|F|O)\b", full_text, re.IGNORECASE)
+        if sex_match:
+            raw = sex_match.group(1).lower()
+            collected["sex"] = "M" if raw in ("m", "male") else "F" if raw in ("f", "female") else "O"
+
     return collected
 
 
@@ -394,14 +402,14 @@ async def register_patient(state: AgentState, tools: list) -> dict:
     return {
         "messages": [AIMessage(
             content=(
-                f"✓ Patient registered successfully!\n\n"
-                f"**{result['name']}**\n"
-                f"Patient ID: {result['patient_id']}\n\n"
-                f"The patient has been assigned to their doctor. "
-                f"They can now be checked in for appointments."
+                f"✓ **{result['name']}** registered successfully!\n\n"
+                f"Patient ID: `{result['patient_id']}`\n\n"
+                f"Would you like to book an appointment for **{result['name']}** now? "
+                f"If yes, please tell me the preferred date — for example: "
+                f"'Yes, book on 25 March' or 'Book appointment next Monday'."
             )
         )],
         "patient_id": result["patient_id"],
         "patient_name": result["name"],
-        "is_new_patient": False,  # Now registered
+        "is_new_patient": False,
     }

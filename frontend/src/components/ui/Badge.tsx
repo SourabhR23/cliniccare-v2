@@ -17,24 +17,25 @@ interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-sky/10 text-sky border-sky/20',
-  allergy: 'bg-red-500/10 text-red-400 border-red-500/20',
-  condition: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-  success: 'bg-teal/10 text-teal border-teal/20',
-  warning: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  error: 'bg-red-600/15 text-red-300 border-red-600/25',
-  info: 'bg-sky/10 text-sky border-sky/20',
-  muted: 'bg-white/5 text-[rgba(180,200,220,0.45)] border-white/10',
+  default:   'bg-[#e0f5f2] text-[#0a8878] border-[#c8ede8]',
+  allergy:   'bg-[#fff2f2] text-[#c82020] border-[rgba(200,32,32,0.2)]',
+  condition: 'bg-[#fff8ee] text-[#b87010] border-[rgba(184,112,16,0.2)]',
+  success:   'bg-[#eef8f3] text-[#0a6840] border-[rgba(10,104,64,0.2)]',
+  warning:   'bg-[#fff8ee] text-[#b87010] border-[rgba(184,112,16,0.2)]',
+  error:     'bg-[#fff2f2] text-[#c82020] border-[rgba(200,32,32,0.2)]',
+  info:      'bg-[#edf3ff] text-[#1858d0] border-[rgba(24,88,208,0.2)]',
+  muted:     'bg-[#e8f2f6] text-[#5a8898] border-[#c8dde6]',
 }
 
 export function Badge({ variant = 'default', children, className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded-full border font-mono text-[10px] uppercase tracking-wider font-medium',
+        'inline-flex items-center px-2 py-0.5 border font-semibold text-[9px] uppercase tracking-wider',
         variantStyles[variant],
         className
       )}
+      style={{ borderRadius: 5 }}
     >
       {children}
     </span>

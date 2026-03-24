@@ -121,6 +121,36 @@ export interface AgentChatResponse {
   retrieval_count?: number
 }
 
+export interface AgentUISlotPicker {
+  type: 'slot_picker'
+  patient_name: string
+  patient_id: string
+  doctor_name: string
+  doctor_id: string
+  appointment_date: string
+  slots: string[]
+  reason: string
+}
+
+export interface AgentUIBookingConfirm {
+  type: 'booking_confirm'
+  appointment_id: string
+  patient_name: string
+  doctor_name: string
+  appointment_date: string
+  appointment_slot: string
+  reason: string
+  patient_email: string
+  email_sent: boolean
+}
+
+export interface AgentUIRegisterPrompt {
+  type: 'register_prompt'
+  patient_name: string
+}
+
+export type AgentUIData = AgentUISlotPicker | AgentUIBookingConfirm | AgentUIRegisterPrompt
+
 export interface AgentThread {
   thread_id: string
   messages: ChatMessage[]

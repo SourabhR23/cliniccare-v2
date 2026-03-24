@@ -7,24 +7,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        void: '#0a0c10',
-        surface: '#0d1017',
-        card: '#121620',
-        sky: '#38bdf8',
-        teal: '#22d3ee',
-        ice: '#d4eaf7',
+        // New palette
+        navy:    '#052838',
+        navy2:   '#083448',
+        teal:    '#0a8878',
+        teal2:   '#0db89e',
+        bg:      '#f0f6f8',
+        surface: '#e8f2f6',
+        border:  '#c8dde6',
+        // Legacy compat aliases
+        void:    '#052838',
+        card:    '#ffffff',
+        sky:     '#0db89e',
+        ice:     '#052838',
       },
       fontFamily: {
-        sans: ['var(--font-manrope)', 'sans-serif'],
-        mono: ['var(--font-azeret-mono)', 'monospace'],
+        sans:    ['var(--font-sora)', 'Sora', 'sans-serif'],
+        display: ['var(--font-literata)', 'Literata', 'Georgia', 'serif'],
+        mono:    ['var(--font-sora)', 'sans-serif'],
       },
       borderRadius: {
-        card: '14px',
-        input: '10px',
-        badge: '8px',
+        card:  '14px',
+        input: '9px',
+        badge: '5px',
       },
-      backdropBlur: {
-        glass: '28px',
+      boxShadow: {
+        card: '0 1px 8px rgba(5,40,56,0.06)',
+        md:   '0 3px 18px rgba(5,40,56,0.10)',
+        lg:   '0 8px 32px rgba(5,40,56,0.14)',
       },
     },
   },

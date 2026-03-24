@@ -110,17 +110,17 @@ function AdminDashboard() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-ice">
+          <h2 className="text-lg font-semibold text-[#052838]">
             Good {now.getHours() < 12 ? 'morning' : now.getHours() < 17 ? 'afternoon' : 'evening'},{' '}
             <span className="text-sky">{user?.name?.split(' ')[0]}</span>
           </h2>
-          <p className="text-sm text-[rgba(180,200,220,0.45)] mt-0.5">
+          <p className="text-sm text-[#5a8898] mt-0.5">
             {formatDate(new Date().toISOString())} · System Administrator
           </p>
         </div>
         <Link
           href="/admin"
-          className="flex items-center gap-1.5 text-[11px] font-mono text-[rgba(180,200,220,0.4)] hover:text-sky bg-white/[0.02] border border-[rgba(212,234,247,0.07)] hover:border-sky/20 px-3 py-1.5 rounded-[8px] transition-colors"
+          className="flex items-center gap-1.5 text-[11px] font-sans text-[#5a8898] hover:text-sky bg-[#e8f2f6] border border-[#c8dde6] hover:border-sky/20 px-3 py-1.5 rounded-[8px] transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -159,7 +159,7 @@ function AdminDashboard() {
             label: 'Today\'s Bookings',
             value: todayAppts,
             sub: formatDate(now.toISOString()),
-            color: todayAppts > 8 ? 'text-amber-400' : 'text-ice',
+            color: todayAppts > 8 ? 'text-amber-400' : 'text-[#052838]',
             icon: (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -178,13 +178,13 @@ function AdminDashboard() {
             ),
           },
         ].map((s) => (
-          <div key={s.label} className="bg-[rgba(212,234,247,0.04)] border border-[rgba(212,234,247,0.10)] rounded-[14px] p-5">
+          <div key={s.label} className="bg-white border border-[#c8dde6] rounded-[14px] p-5">
             <div className="flex items-start justify-between mb-3">
-              <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider">{s.label}</p>
-              <span className="text-[rgba(180,200,220,0.2)]">{s.icon}</span>
+              <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider">{s.label}</p>
+              <span className="text-[#8aaab8]">{s.icon}</span>
             </div>
             <p className={cn('text-3xl font-semibold', s.color)}>{s.value}</p>
-            <p className="text-[11px] text-[rgba(180,200,220,0.35)] mt-1.5">{s.sub}</p>
+            <p className="text-[11px] text-[#8aaab8] mt-1.5">{s.sub}</p>
           </div>
         ))}
       </div>
@@ -194,7 +194,7 @@ function AdminDashboard() {
 
         {/* Calendar chat — spans 2 cols */}
         <Card className="xl:col-span-2 overflow-hidden flex flex-col" style={{ minHeight: '420px', maxHeight: '520px' }}>
-          <div className="px-5 py-3.5 border-b border-[rgba(212,234,247,0.07)] flex items-center justify-between shrink-0">
+          <div className="px-5 py-3.5 border-b border-[#c8dde6] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-[8px] bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
                 <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -202,14 +202,14 @@ function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <p className="text-xs font-semibold text-ice leading-none">Clinic Schedule Intelligence</p>
-                <p className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] mt-0.5">Calendar agent · all doctors · unscoped</p>
+                <p className="text-xs font-semibold text-[#052838] leading-none">Clinic Schedule Intelligence</p>
+                <p className="text-[10px] font-sans text-[#8aaab8] mt-0.5">Calendar agent · all doctors · unscoped</p>
               </div>
             </div>
             {threadId && (
               <button
                 onClick={() => { setMsgs([]); setThreadId(undefined) }}
-                className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] hover:text-sky transition-colors flex items-center gap-1"
+                className="text-[10px] font-sans text-[#8aaab8] hover:text-sky transition-colors flex items-center gap-1"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -228,15 +228,15 @@ function AdminDashboard() {
                   </svg>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-ice mb-1">Ask about the clinic schedule</p>
-                  <p className="text-xs text-[rgba(180,200,220,0.3)]">Follow-ups, bookings, doctor capacity — all visible</p>
+                  <p className="text-sm font-medium text-[#052838] mb-1">Ask about the clinic schedule</p>
+                  <p className="text-xs text-[#8aaab8]">Follow-ups, bookings, doctor capacity — all visible</p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
                   {chipSuggestions.map((s) => (
                     <button
                       key={s}
                       onClick={() => setInput(s)}
-                      className="text-[11px] font-mono text-[rgba(180,200,220,0.45)] bg-white/[0.025] border border-[rgba(212,234,247,0.08)] hover:border-purple-500/30 hover:text-purple-300 px-3 py-1.5 rounded-full transition-colors"
+                      className="text-[11px] font-sans text-[#5a8898] bg-[#e8f2f6] border border-[#c8dde6] hover:border-purple-500/30 hover:text-purple-300 px-3 py-1.5 rounded-full transition-colors"
                     >
                       {s}
                     </button>
@@ -256,17 +256,17 @@ function AdminDashboard() {
                 <div className={cn(
                   'max-w-[80%] rounded-[12px] px-4 py-2.5 text-sm leading-relaxed',
                   msg.role === 'user'
-                    ? 'bg-sky/10 border border-sky/15 text-ice'
+                    ? 'bg-sky/10 border border-sky/15 text-[#052838]'
                     : msg.isError
                     ? 'bg-red-500/8 border border-red-500/15 text-red-300'
-                    : 'bg-purple-500/8 border border-purple-500/15 text-[rgba(212,234,247,0.85)]'
+                    : 'bg-purple-500/8 border border-purple-500/15 text-[#1a4858]'
                 )}>
                   {msg.role === 'assistant' ? (
                     <ReactMarkdown components={{
                       p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
-                      strong: ({ children }) => <strong className="font-semibold text-ice">{children}</strong>,
+                      strong: ({ children }) => <strong className="font-semibold text-[#052838]">{children}</strong>,
                       ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-1.5">{children}</ul>,
-                      li: ({ children }) => <li className="text-[rgba(212,234,247,0.75)]">{children}</li>,
+                      li: ({ children }) => <li className="text-[#1a4858]">{children}</li>,
                     }}>
                       {msg.content}
                     </ReactMarkdown>
@@ -291,14 +291,14 @@ function AdminDashboard() {
             <div ref={bottomRef} />
           </div>
 
-          <form onSubmit={send} className="px-4 pb-4 pt-3 border-t border-[rgba(212,234,247,0.07)] shrink-0">
+          <form onSubmit={send} className="px-4 pb-4 pt-3 border-t border-[#c8dde6] shrink-0">
             <div className="flex gap-2">
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about bookings, follow-ups, doctor schedules…"
                 disabled={loading}
-                className="flex-1 bg-white/[0.03] border border-[rgba(212,234,247,0.08)] rounded-[10px] px-4 py-2 text-sm text-ice placeholder-[rgba(180,200,220,0.25)] focus:outline-none focus:border-purple-500/40 disabled:opacity-50"
+                className="flex-1 bg-[#e8f2f6] border border-[#c8dde6] rounded-[10px] px-4 py-2 text-sm text-[#052838] placeholder-[#8aaab8] focus:outline-none focus:border-purple-500/40 disabled:opacity-50"
               />
               <button
                 type="submit"
@@ -318,7 +318,7 @@ function AdminDashboard() {
 
           {/* System health */}
           <Card className="p-5">
-            <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-3">System Health</p>
+            <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-3">System Health</p>
             <div className="space-y-2.5">
               {health ? (
                 Object.entries(health)
@@ -327,8 +327,8 @@ function AdminDashboard() {
                     const ok = String(v) === 'connected' || String(v) === 'ok'
                     return (
                       <div key={k} className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-xs text-[rgba(180,200,220,0.55)] capitalize">{k}</span>
-                        <span className={cn('flex items-center gap-1.5 text-[11px] font-mono', ok ? 'text-teal' : 'text-red-400')}>
+                        <span className="flex items-center gap-2 text-xs text-[#5a8898] capitalize">{k}</span>
+                        <span className={cn('flex items-center gap-1.5 text-[11px] font-sans', ok ? 'text-teal' : 'text-red-400')}>
                           <span className={cn('w-1.5 h-1.5 rounded-full', ok ? 'bg-teal' : 'bg-red-400')} />
                           {String(v)}
                         </span>
@@ -337,12 +337,12 @@ function AdminDashboard() {
                   })
               ) : (
                 <div className="space-y-2">
-                  {[1,2,3].map(i => <div key={i} className="animate-pulse h-4 bg-white/[0.03] rounded" />)}
+                  {[1,2,3].map(i => <div key={i} className="animate-pulse h-4 bg-[#e8f2f6] rounded" />)}
                 </div>
               )}
             </div>
             {health && (
-              <div className={cn('mt-3 pt-3 border-t border-[rgba(212,234,247,0.06)] flex items-center gap-2 text-xs font-semibold', healthOk ? 'text-teal' : 'text-red-400')}>
+              <div className={cn('mt-3 pt-3 border-t border-[#c8dde6] flex items-center gap-2 text-xs font-semibold', healthOk ? 'text-teal' : 'text-red-400')}>
                 <span className={cn('w-2 h-2 rounded-full', healthOk ? 'bg-teal' : 'bg-red-400')} />
                 {healthOk ? 'All systems operational' : 'Service degraded'}
               </div>
@@ -351,43 +351,43 @@ function AdminDashboard() {
 
           {/* Embedding + agent quick stats */}
           <Card className="p-5 flex-1">
-            <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-3">Vector Pipeline</p>
+            <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-3">Vector Pipeline</p>
             {queue ? (
               <div className="space-y-3">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-[rgba(180,200,220,0.5)]">Embedded</span>
-                    <span className="text-xs font-mono text-teal">{embeddedPct}%</span>
+                    <span className="text-xs text-[#5a8898]">Embedded</span>
+                    <span className="text-xs font-sans text-teal">{embeddedPct}%</span>
                   </div>
-                  <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[#e8f2f6] rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-sky to-teal rounded-full" style={{ width: `${embeddedPct}%` }} />
                   </div>
                 </div>
                 {[
                   { label: 'Embedded', val: queue.embedded, cls: 'text-teal' },
-                  { label: 'Pending', val: queue.pending, cls: queue.pending > 0 ? 'text-amber-400' : 'text-ice' },
-                  { label: 'Failed', val: queue.failed, cls: queue.failed > 0 ? 'text-red-400' : 'text-ice' },
+                  { label: 'Pending', val: queue.pending, cls: queue.pending > 0 ? 'text-amber-400' : 'text-[#052838]' },
+                  { label: 'Failed', val: queue.failed, cls: queue.failed > 0 ? 'text-red-400' : 'text-[#052838]' },
                   { label: 'Vectors', val: queue.chroma_total, cls: 'text-sky' },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between">
-                    <span className="text-xs text-[rgba(180,200,220,0.4)]">{row.label}</span>
-                    <span className={cn('text-sm font-mono font-semibold', row.cls)}>{row.val}</span>
+                    <span className="text-xs text-[#5a8898]">{row.label}</span>
+                    <span className={cn('text-sm font-sans font-semibold', row.cls)}>{row.val}</span>
                   </div>
                 ))}
               </div>
-            ) : <div className="animate-pulse space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-5 bg-white/[0.03] rounded" />)}</div>}
+            ) : <div className="animate-pulse space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-5 bg-[#e8f2f6] rounded" />)}</div>}
 
             {agentStats && (
-              <div className="mt-4 pt-4 border-t border-[rgba(212,234,247,0.06)]">
-                <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">Agent · 24h</p>
+              <div className="mt-4 pt-4 border-t border-[#c8dde6]">
+                <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">Agent · 24h</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-[10px] text-[rgba(180,200,220,0.35)]">Calls</p>
-                    <p className="text-base font-mono font-semibold text-ice">{agentStats.overall?.total_calls ?? 0}</p>
+                    <p className="text-[10px] text-[#8aaab8]">Calls</p>
+                    <p className="text-base font-sans font-semibold text-[#052838]">{agentStats.overall?.total_calls ?? 0}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[rgba(180,200,220,0.35)]">Avg latency</p>
-                    <p className={cn('text-base font-mono font-semibold', (agentStats.overall?.avg_latency_ms ?? 0) > 8000 ? 'text-amber-400' : 'text-sky')}>
+                    <p className="text-[10px] text-[#8aaab8]">Avg latency</p>
+                    <p className={cn('text-base font-sans font-semibold', (agentStats.overall?.avg_latency_ms ?? 0) > 8000 ? 'text-amber-400' : 'text-sky')}>
                       {agentStats.overall?.avg_latency_ms ? `${(agentStats.overall.avg_latency_ms / 1000).toFixed(1)}s` : '—'}
                     </p>
                   </div>
@@ -400,14 +400,14 @@ function AdminDashboard() {
 
       {/* ── Staff roster ────────────────────────────────────────────────── */}
       <Card className="overflow-hidden">
-        <div className="px-5 py-4 border-b border-[rgba(212,234,247,0.07)] flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-[#c8dde6] flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-ice">Staff Roster</h3>
-            <p className="text-[11px] text-[rgba(180,200,220,0.35)] mt-0.5 font-mono">{activeStaff.length} active · {staffUsers.length - activeStaff.length} inactive</p>
+            <h3 className="text-sm font-semibold text-[#052838]">Staff Roster</h3>
+            <p className="text-[11px] text-[#8aaab8] mt-0.5 font-sans">{activeStaff.length} active · {staffUsers.length - activeStaff.length} inactive</p>
           </div>
           <button
             onClick={() => router.push('/admin')}
-            className="text-xs text-sky hover:text-sky/80 font-mono transition-colors"
+            className="text-xs text-sky hover:text-sky/80 font-sans transition-colors"
           >
             Manage →
           </button>
@@ -415,32 +415,32 @@ function AdminDashboard() {
         {staffUsers.length === 0 ? (
           <div className="px-5 py-6">
             <div className="grid grid-cols-3 gap-3">
-              {[1,2,3].map(i => <div key={i} className="animate-pulse h-14 bg-white/[0.02] rounded-[10px]" />)}
+              {[1,2,3].map(i => <div key={i} className="animate-pulse h-14 bg-[#e8f2f6] rounded-[10px]" />)}
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-0 divide-y divide-[rgba(212,234,247,0.04)] xl:divide-y-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-0 divide-y divide-[#c8dde6] xl:divide-y-0">
             {staffUsers.slice(0, 6).map((u, i) => (
               <div
                 key={u.id}
                 className={cn(
                   'px-5 py-4 flex items-center gap-3',
-                  i > 0 && 'xl:border-l xl:border-[rgba(212,234,247,0.04)]',
+                  i > 0 && 'xl:border-l xl:border-[#c8dde6]',
                   !u.is_active && 'opacity-40'
                 )}
               >
-                <div className="w-9 h-9 rounded-full bg-white/[0.04] border border-[rgba(212,234,247,0.08)] flex items-center justify-center shrink-0">
-                  <span className="text-xs font-mono text-[rgba(180,200,220,0.6)]">
+                <div className="w-9 h-9 rounded-full bg-[#e8f2f6] border border-[#c8dde6] flex items-center justify-center shrink-0">
+                  <span className="text-xs font-sans text-[#5a8898]">
                     {u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ice truncate">{u.name}</p>
+                  <p className="text-sm font-medium text-[#052838] truncate">{u.name}</p>
                   {u.specialization && (
-                    <p className="text-[10px] text-[rgba(180,200,220,0.35)] truncate font-mono">{u.specialization}</p>
+                    <p className="text-[10px] text-[#8aaab8] truncate font-sans">{u.specialization}</p>
                   )}
                 </div>
-                <span className={cn('text-[9px] font-mono px-2 py-0.5 rounded-full border capitalize shrink-0', ROLE_COLOR[u.role])}>
+                <span className={cn('text-[9px] font-sans px-2 py-0.5 rounded-full border capitalize shrink-0', ROLE_COLOR[u.role])}>
                   {u.role}
                 </span>
               </div>
@@ -456,9 +456,9 @@ function AdminDashboard() {
 // ── Skeleton components ────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div className="bg-[rgba(212,234,247,0.04)] border border-[rgba(212,234,247,0.10)] rounded-[14px] p-5 animate-pulse">
-      <div className="h-3 w-24 bg-white/5 rounded mb-3" />
-      <div className="h-8 w-16 bg-white/5 rounded" />
+    <div className="bg-white border border-[#c8dde6] rounded-[14px] p-5 animate-pulse">
+      <div className="h-3 w-24 bg-[#e8f2f6] rounded mb-3" />
+      <div className="h-8 w-16 bg-[#e8f2f6] rounded" />
     </div>
   )
 }
@@ -468,7 +468,7 @@ function SkeletonRow() {
     <tr className="animate-pulse">
       {[1,2,3,4,5].map(i => (
         <td key={i} className="px-4 py-3">
-          <div className="h-3 bg-white/5 rounded w-3/4" />
+          <div className="h-3 bg-[#e8f2f6] rounded w-3/4" />
         </td>
       ))}
     </tr>
@@ -527,11 +527,11 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold text-ice">
+        <h2 className="text-lg font-semibold text-[#052838]">
           Good {now.getHours() < 12 ? 'morning' : now.getHours() < 17 ? 'afternoon' : 'evening'},{' '}
           <span className="text-sky">{user?.name?.split(' ')[0]}</span>
         </h2>
-        <p className="text-sm text-[rgba(180,200,220,0.45)] mt-0.5">
+        <p className="text-sm text-[#5a8898] mt-0.5">
           {formatDate(new Date().toISOString())}
           {user?.specialization && ` · ${user.specialization}`}
         </p>
@@ -592,20 +592,20 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Recent patients table */}
         <Card className="xl:col-span-2 overflow-hidden">
-          <div className="px-5 py-4 border-b border-[rgba(212,234,247,0.07)] flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-ice">Recent Patients</h3>
-            <Link href="/patients" className="text-xs text-sky hover:text-sky/80 font-mono transition-colors">
+          <div className="px-5 py-4 border-b border-[#c8dde6] flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-[#052838]">Recent Patients</h3>
+            <Link href="/patients" className="text-xs text-sky hover:text-sky/80 font-sans transition-colors">
               View all →
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[rgba(212,234,247,0.05)]">
+                <tr className="border-b border-[#c8dde6]">
                   {['Patient', 'Age', 'Last Visit', 'Visits', ''].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-widest"
+                      className="px-4 py-3 text-left text-[10px] font-sans text-[#8aaab8] uppercase tracking-widest"
                     >
                       {h}
                     </th>
@@ -619,21 +619,21 @@ export default function DashboardPage() {
                       <tr
                         key={p.id}
                         onClick={() => router.push(`/patients/${p.id}`)}
-                        className="border-b border-[rgba(212,234,247,0.04)] hover:bg-white/[0.02] cursor-pointer transition-colors"
+                        className="border-b border-[#c8dde6] hover:bg-[#e8f2f6] cursor-pointer transition-colors"
                       >
                         <td className="px-4 py-3">
                           <div>
-                            <p className="text-sm font-medium text-ice">{p.name}</p>
-                            <p className="text-[11px] font-mono text-[rgba(180,200,220,0.35)] mt-0.5">{p.phone}</p>
+                            <p className="text-sm font-medium text-[#052838]">{p.name}</p>
+                            <p className="text-[11px] font-sans text-[#8aaab8] mt-0.5">{p.phone}</p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-mono text-sm text-[rgba(180,200,220,0.65)]">
+                        <td className="px-4 py-3 font-sans text-sm text-[#5a8898]">
                           {p.age}y {p.sex}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-[rgba(180,200,220,0.5)]">
+                        <td className="px-4 py-3 font-sans text-xs text-[#5a8898]">
                           {formatDate(p.last_visit_date)}
                         </td>
-                        <td className="px-4 py-3 font-mono text-sm text-sky">
+                        <td className="px-4 py-3 font-sans text-sm text-sky">
                           {p.total_visits}
                         </td>
                         <td className="px-4 py-3">
@@ -650,31 +650,31 @@ export default function DashboardPage() {
 
         {/* Follow-up queue */}
         <Card>
-          <div className="px-5 py-4 border-b border-[rgba(212,234,247,0.07)] flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-ice">Follow-up Queue</h3>
+          <div className="px-5 py-4 border-b border-[#c8dde6] flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-[#052838]">Follow-up Queue</h3>
             <Badge variant="warning">{followupQueue.length}</Badge>
           </div>
-          <div className="divide-y divide-[rgba(212,234,247,0.04)]">
+          <div className="divide-y divide-[#c8dde6]">
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="px-5 py-3.5 animate-pulse">
-                  <div className="h-3 w-32 bg-white/5 rounded mb-2" />
-                  <div className="h-2.5 w-20 bg-white/5 rounded" />
+                  <div className="h-3 w-32 bg-[#e8f2f6] rounded mb-2" />
+                  <div className="h-2.5 w-20 bg-[#e8f2f6] rounded" />
                 </div>
               ))
             ) : followupQueue.length === 0 ? (
               <div className="px-5 py-8 text-center">
-                <p className="text-sm text-[rgba(180,200,220,0.3)]">No pending follow-ups</p>
+                <p className="text-sm text-[#8aaab8]">No pending follow-ups</p>
               </div>
             ) : (
               followupQueue.map((p) => (
                 <div
                   key={p.id}
-                  className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors group"
+                  className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-[#e8f2f6] transition-colors group"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-ice truncate">{p.name}</p>
-                    <p className="text-[11px] font-mono text-sky mt-0.5">
+                    <p className="text-sm font-medium text-[#052838] truncate">{p.name}</p>
+                    <p className="text-[11px] font-sans text-sky mt-0.5">
                       {formatDate(p.pending_followup_date)}
                     </p>
                   </div>
@@ -708,8 +708,8 @@ function ReceptionistDashboard({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-ice">Reception Desk</h2>
-        <p className="text-sm text-[rgba(180,200,220,0.45)] mt-0.5">Manage patients and appointments</p>
+        <h2 className="text-lg font-semibold text-[#052838]">Reception Desk</h2>
+        <p className="text-sm text-[#5a8898] mt-0.5">Manage patients and appointments</p>
       </div>
 
       {/* Quick actions */}
@@ -723,8 +723,8 @@ function ReceptionistDashboard({
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <h3 className="text-sm font-semibold text-ice mb-1">Search Patients</h3>
-          <p className="text-xs text-[rgba(180,200,220,0.4)]">Find and manage patient records</p>
+          <h3 className="text-sm font-semibold text-[#052838] mb-1">Search Patients</h3>
+          <p className="text-xs text-[#5a8898]">Find and manage patient records</p>
         </Card>
 
         <Card
@@ -736,8 +736,8 @@ function ReceptionistDashboard({
               <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           </div>
-          <h3 className="text-sm font-semibold text-ice mb-1">Register Patient</h3>
-          <p className="text-xs text-[rgba(180,200,220,0.4)]">Add a new patient to the system</p>
+          <h3 className="text-sm font-semibold text-[#052838] mb-1">Register Patient</h3>
+          <p className="text-xs text-[#5a8898]">Add a new patient to the system</p>
         </Card>
 
         <Card
@@ -749,8 +749,8 @@ function ReceptionistDashboard({
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
           </div>
-          <h3 className="text-sm font-semibold text-ice mb-1">AI Agent Chat</h3>
-          <p className="text-xs text-[rgba(180,200,220,0.4)]">Multi-agent assistant for scheduling</p>
+          <h3 className="text-sm font-semibold text-[#052838] mb-1">AI Agent Chat</h3>
+          <p className="text-xs text-[#5a8898]">Multi-agent assistant for scheduling</p>
         </Card>
       </div>
 

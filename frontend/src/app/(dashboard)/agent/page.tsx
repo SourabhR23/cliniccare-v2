@@ -7,25 +7,28 @@ import ReactMarkdown from 'react-markdown'
 import { agentChat } from '@/lib/api'
 import { useAuthStore } from '@/store/auth'
 import { cn } from '@/lib/utils'
-import { AgentChatResponse, ChatMessage } from '@/types'
+import { AgentChatResponse, AgentUIData, AgentUISlotPicker, AgentUIBookingConfirm, AgentUIRegisterPrompt } from '@/types'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Spinner } from '@/components/ui/Spinner'
 
 interface ConversationMessage {
   role: 'user' | 'assistant'
   content: string
   agent?: string
+  uiData?: AgentUIData
 }
 
-const agentMeta: Record<string, { label: string; color: string; variant: 'success' | 'default' | 'warning' | 'muted'; icon: string }> = {
-  ReceptionistAgent: { label: 'RECEPTIONIST', color: 'text-teal',        variant: 'success',  icon: '👤' },
-  RAGAgent:          { label: 'RAG',          color: 'text-sky',          variant: 'default',  icon: '🔍' },
-  SchedulingAgent:   { label: 'SCHEDULING',   color: 'text-yellow-400',   variant: 'warning',  icon: '📅' },
-  NotificationAgent: { label: 'NOTIFICATION', color: 'text-orange-400',   variant: 'warning',  icon: '✉️' },
-  CalendarAgent:     { label: 'CALENDAR',     color: 'text-purple-400',   variant: 'muted',    icon: '🗓️' },
-  supervisor:        { label: 'SYSTEM',       color: 'text-[rgba(180,200,220,0.4)]', variant: 'muted', icon: '⚙️' },
+const agentMeta: Record<string, { label: string; variant: 'success' | 'default' | 'warning' | 'muted' | 'info' }> = {
+  ReceptionistAgent: { label: 'RECEPTIONIST', variant: 'success' },
+  RAGAgent:          { label: 'RAG',          variant: 'default' },
+  SchedulingAgent:   { label: 'SCHEDULING',   variant: 'warning' },
+  NotificationAgent: { label: 'NOTIFICATION', variant: 'warning' },
+  CalendarAgent:     { label: 'CALENDAR',     variant: 'muted'   },
+  supervisor:        { label: 'SYSTEM',       variant: 'muted'   },
+  PATIENT_LOOKUP:    { label: 'PATIENT LOOKUP', variant: 'info'  },
+  SLOT_FINDER:       { label: 'SLOT FINDER',  variant: 'warning' },
+  BOOKING:           { label: 'BOOKING',      variant: 'success' },
 }
 
 function AgentBadge({ agent }: { agent?: string }) {
@@ -33,7 +36,7 @@ function AgentBadge({ agent }: { agent?: string }) {
   const meta = agentMeta[agent]
   if (!meta) return null
   return (
-    <Badge variant={meta.variant} className="text-[9px] font-mono tracking-wider">
+    <Badge variant={meta.variant} className="text-[9px] font-sans tracking-wider">
       {meta.label}
     </Badge>
   )
@@ -44,35 +47,40 @@ function AssistantContent({ content }: { content: string }) {
     <ReactMarkdown
       components={{
         p: ({ children }) => (
-          <p className="text-sm text-[rgba(180,200,220,0.88)] leading-relaxed mb-2 last:mb-0">{children}</p>
+          <p className="text-sm text-[#052838] leading-relaxed mb-2 last:mb-0">{children}</p>
         ),
         strong: ({ children }) => (
-          <strong className="font-semibold text-ice">{children}</strong>
+          <strong className="font-semibold text-[#052838]">{children}</strong>
         ),
-        em: ({ children }) => (
-          <em className="text-[rgba(180,200,220,0.7)] not-italic">{children}</em>
-        ),
-        ul: ({ children }) => (
-          <ul className="my-2 space-y-1 pl-1">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="my-2 space-y-1 pl-1 list-decimal list-inside">{children}</ol>
-        ),
+        ul: ({ children }) => <ul className="my-2 space-y-1 pl-1">{children}</ul>,
+        ol: ({ children }) => <ol className="my-2 space-y-1 pl-1 list-decimal list-inside">{children}</ol>,
         li: ({ children }) => (
-          <li className="text-sm text-[rgba(180,200,220,0.82)] flex gap-2 items-start">
-            <span className="text-sky mt-0.5 flex-shrink-0">›</span>
+          <li className="text-sm text-[#5a8898] flex gap-2 items-start">
+            <span className="text-[#0db89e] mt-0.5 flex-shrink-0">›</span>
             <span>{children}</span>
           </li>
         ),
         code: ({ children }) => (
-          <code className="font-mono text-xs text-sky bg-sky/10 px-1.5 py-0.5 rounded-[4px]">{children}</code>
+          <code className="font-sans text-xs text-[#0a8878] bg-[#0a8878]/10 px-1.5 py-0.5 rounded-[4px]">{children}</code>
         ),
-        hr: () => (
-          <hr className="my-3 border-[rgba(212,234,247,0.10)]" />
-        ),
+        hr: () => <hr className="my-3 border-[#c8dde6]" />,
         h3: ({ children }) => (
-          <h3 className="text-xs font-mono font-semibold text-[rgba(180,200,220,0.45)] uppercase tracking-widest mb-2 mt-3 first:mt-0">{children}</h3>
+          <h3 className="text-xs font-sans font-semibold text-[#5a8898] uppercase tracking-widest mb-2 mt-3 first:mt-0">{children}</h3>
         ),
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-2">
+            <table className="w-full text-xs border-collapse">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="text-left px-2 py-1.5 bg-[#e8f2f6] text-[#5a8898] font-semibold border border-[#c8dde6] text-[10px] uppercase tracking-wide">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="px-2 py-1.5 text-[#052838] border border-[#c8dde6]">{children}</td>
+        ),
+        tr: ({ children }) => <tr className="even:bg-[#f8fbfc]">{children}</tr>,
       }}
     >
       {content}
@@ -80,81 +88,306 @@ function AssistantContent({ content }: { content: string }) {
   )
 }
 
-function MessageBubble({ msg }: { msg: ConversationMessage }) {
-  const isUser = msg.role === 'user'
-  const meta = msg.agent ? agentMeta[msg.agent] : null
+// ─── Slot Picker UI ──────────────────────────────────────────────────────────
 
-  if (isUser) {
-    return (
-      <div className="flex justify-end">
-        <div className="max-w-[80%] sm:max-w-[65%]">
-          <div className="bg-sky/12 border border-sky/20 rounded-[14px] rounded-tr-[4px] px-4 py-3">
-            <p className="text-sm text-ice leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-          </div>
-          <p className="text-[9px] font-mono text-[rgba(180,200,220,0.2)] mt-1 text-right">You</p>
-        </div>
-      </div>
-    )
+function SlotPicker({
+  data,
+  onSlotSelect,
+}: {
+  data: AgentUISlotPicker
+  onSlotSelect: (slot: string, date: string, patientName: string, doctorName: string) => void
+}) {
+  const [selected, setSelected] = useState<string | null>(null)
+
+  const handleSelect = (slot: string) => {
+    setSelected(slot)
+    onSlotSelect(slot, data.appointment_date, data.patient_name, data.doctor_name)
   }
 
-  // Check if this is a success/confirmation message (starts with ✓)
-  const isSuccess = msg.content.startsWith('✓')
-  const isError = msg.content.toLowerCase().startsWith('unable') || msg.content.toLowerCase().startsWith('error') || msg.content.toLowerCase().startsWith('sorry')
+  // Format date nicely
+  const dateLabel = (() => {
+    try {
+      return new Date(data.appointment_date + 'T00:00:00').toLocaleDateString('en-IN', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+      })
+    } catch {
+      return data.appointment_date
+    }
+  })()
 
   return (
-    <div className="flex justify-start gap-2.5">
-      {/* Avatar */}
-      <div className="w-7 h-7 rounded-full bg-[rgba(212,234,247,0.06)] border border-[rgba(212,234,247,0.12)] flex items-center justify-center flex-shrink-0 mt-0.5">
-        <svg className="w-3.5 h-3.5 text-sky" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-        </svg>
+    <div className="space-y-3">
+      {/* Patient found card */}
+      <div className="rounded-[10px] bg-[#e8f2f6] border border-[#c8dde6] px-3.5 py-2.5 flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-full bg-[#0a8878]/15 border border-[#0a8878]/25 flex items-center justify-center flex-shrink-0">
+          <svg className="w-4 h-4 text-[#0a8878]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[#052838]">{data.patient_name}</p>
+          <p className="text-[10px] text-[#5a8898]">
+            {data.doctor_name ? `Assigned to ${data.doctor_name}` : 'Patient found'}
+            {data.reason ? ` · ${data.reason}` : ''}
+          </p>
+        </div>
+        <div className="ml-auto">
+          <span className="text-[9px] font-sans text-[#0a8878] bg-[#0a8878]/10 px-2 py-0.5 rounded-full font-medium">
+            FOUND
+          </span>
+        </div>
       </div>
 
-      <div className="max-w-[82%] sm:max-w-[75%]">
-        {/* Label row */}
-        <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-[9px] font-mono text-[rgba(180,200,220,0.35)]">ClinicCare AI</span>
-          {msg.agent && <AgentBadge agent={msg.agent} />}
-        </div>
+      {/* Slot selector */}
+      <div>
+        <p className="text-xs text-[#5a8898] mb-2 font-medium">
+          {data.doctor_name ? `${data.doctor_name}'s` : 'Available'} slots on {dateLabel}:
+        </p>
+        {data.slots.length === 0 ? (
+          <p className="text-sm text-[#8aaab8]">No available slots on this date.</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            {data.slots.map((slot) => (
+              <button
+                key={slot}
+                onClick={() => handleSelect(slot)}
+                disabled={!!selected}
+                className={cn(
+                  'text-xs font-medium py-2 px-2 rounded-[8px] border transition-all duration-150 text-center',
+                  selected === slot
+                    ? 'bg-[#0a8878] border-[#0a8878] text-white'
+                    : selected
+                    ? 'bg-[#e8f2f6] border-[#c8dde6] text-[#8aaab8] cursor-not-allowed opacity-50'
+                    : 'bg-white border-[#c8dde6] text-[#052838] hover:border-[#0a8878] hover:bg-[#0a8878]/5 cursor-pointer'
+                )}
+              >
+                {slot}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
-        {/* Bubble */}
-        <div className={cn(
-          'rounded-[14px] rounded-tl-[4px] px-4 py-3',
-          isSuccess
-            ? 'bg-teal/5 border border-teal/15'
-            : isError
-            ? 'bg-red-500/5 border border-red-500/15'
-            : 'bg-[rgba(212,234,247,0.04)] border border-[rgba(212,234,247,0.09)]'
-        )}>
-          {isSuccess && (
-            <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-[rgba(212,234,247,0.08)]">
-              <span className="text-teal text-sm">✓</span>
-              <span className="text-[10px] font-mono text-teal/70 uppercase tracking-wider">
-                {meta?.label || 'Done'}
-              </span>
-            </div>
-          )}
-          <AssistantContent content={isSuccess ? msg.content.replace(/^✓\s*/, '') : msg.content} />
+// ─── Booking Confirmation Card ────────────────────────────────────────────────
+
+function BookingCard({ data }: { data: AgentUIBookingConfirm }) {
+  const dateLabel = (() => {
+    try {
+      return new Date(data.appointment_date + 'T00:00:00').toLocaleDateString('en-IN', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+      })
+    } catch {
+      return data.appointment_date
+    }
+  })()
+
+  const rows = [
+    { label: 'Patient', value: data.patient_name },
+    { label: 'Doctor', value: data.doctor_name },
+    { label: 'When', value: `${dateLabel} · ${data.appointment_slot}` },
+    { label: 'Type', value: data.reason || 'General Consultation' },
+    { label: 'Email', value: data.patient_email || 'Not on file' },
+  ]
+
+  return (
+    <div className="space-y-3">
+      {/* Success header */}
+      <div className="flex items-center gap-2 pb-2 border-b border-[#c8dde6]">
+        <div className="w-5 h-5 rounded-full bg-[#0a8878]/15 flex items-center justify-center">
+          <svg className="w-3 h-3 text-[#0a8878]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <span className="text-xs font-semibold text-[#0a8878] uppercase tracking-wider">Booking Confirmed</span>
+        <span className="ml-auto text-[9px] text-[#8aaab8] font-mono">{data.appointment_id}</span>
+      </div>
+
+      {/* Details grid */}
+      <div className="space-y-1.5">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="flex justify-between items-start gap-4">
+            <span className="text-[10px] text-[#8aaab8] uppercase tracking-wide font-medium flex-shrink-0 w-14">{label}</span>
+            <span className="text-xs text-[#052838] text-right">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Email status */}
+      <div className={cn(
+        'flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-[6px]',
+        data.email_sent
+          ? 'bg-[#0a8878]/8 text-[#0a8878]'
+          : 'bg-[#e8f2f6] text-[#8aaab8]'
+      )}>
+        <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        {data.email_sent ? 'Confirmation email sent to patient' : 'No email on file — email not sent'}
+      </div>
+    </div>
+  )
+}
+
+// ─── Register Prompt UI ───────────────────────────────────────────────────────
+
+function RegisterPrompt({
+  data,
+  onAction,
+}: {
+  data: AgentUIRegisterPrompt
+  onAction: (msg: string) => void
+}) {
+  const [acted, setActed] = useState(false)
+
+  const handleYes = () => {
+    setActed(true)
+    onAction(`Yes, register ${data.patient_name}`)
+  }
+  const handleNo = () => {
+    setActed(true)
+    onAction(`No, I'll search again`)
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Not found notice */}
+      <div className="flex items-center gap-2.5 rounded-[10px] bg-amber-50 border border-amber-200 px-3.5 py-2.5">
+        <div className="w-7 h-7 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0">
+          <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[#052838]">
+            &quot;{data.patient_name}&quot; not found
+          </p>
+          <p className="text-[10px] text-[#5a8898]">No matching patient record in the system</p>
+        </div>
+      </div>
+
+      {/* Register question */}
+      <div>
+        <p className="text-sm text-[#052838] mb-2.5">
+          Would you like to register <strong>{data.patient_name}</strong> as a new patient?
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={handleYes}
+            disabled={acted}
+            className={cn(
+              'flex-1 text-sm font-medium py-2 px-4 rounded-[9px] border transition-all duration-150',
+              acted
+                ? 'bg-[#e8f2f6] border-[#c8dde6] text-[#8aaab8] cursor-not-allowed'
+                : 'bg-[#0a8878] border-[#0a8878] text-white hover:bg-[#0a8878]/90 cursor-pointer'
+            )}
+          >
+            Yes, register patient
+          </button>
+          <button
+            onClick={handleNo}
+            disabled={acted}
+            className={cn(
+              'flex-1 text-sm font-medium py-2 px-4 rounded-[9px] border transition-all duration-150',
+              acted
+                ? 'bg-[#e8f2f6] border-[#c8dde6] text-[#8aaab8] cursor-not-allowed'
+                : 'bg-white border-[#c8dde6] text-[#052838] hover:border-[#5a8898] cursor-pointer'
+            )}
+          >
+            No, search again
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
-function TypingIndicator() {
+// ─── Message Bubble ───────────────────────────────────────────────────────────
+
+function MessageBubble({
+  msg,
+  onSlotSelect,
+  onAction,
+}: {
+  msg: ConversationMessage
+  onSlotSelect: (slot: string, date: string, patientName: string, doctorName: string) => void
+  onAction: (msg: string) => void
+}) {
+  if (msg.role === 'user') {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[80%] sm:max-w-[65%]">
+          <div className="bg-[#0a8878]/10 border border-[#0a8878]/20 rounded-[14px] rounded-tr-[4px] px-4 py-3">
+            <p className="text-sm text-[#052838] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+          </div>
+          <p className="text-[9px] font-sans text-[#8aaab8] mt-1 text-right">You</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine step-specific label for scheduling sub-steps
+  let agentLabel = msg.agent
+  if (msg.uiData?.type === 'slot_picker') agentLabel = 'SLOT_FINDER'
+  if (msg.uiData?.type === 'booking_confirm') agentLabel = 'BOOKING'
+  if (msg.uiData?.type === 'register_prompt') agentLabel = 'PATIENT_LOOKUP'
+
   return (
     <div className="flex justify-start gap-2.5">
-      <div className="w-7 h-7 rounded-full bg-[rgba(212,234,247,0.06)] border border-[rgba(212,234,247,0.12)] flex items-center justify-center flex-shrink-0">
-        <svg className="w-3.5 h-3.5 text-sky animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      {/* Avatar */}
+      <div className="w-7 h-7 rounded-full bg-[#e8f2f6] border border-[#c8dde6] flex items-center justify-center flex-shrink-0 mt-0.5">
+        <svg className="w-3.5 h-3.5 text-[#0a8878]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
         </svg>
       </div>
-      <div className="bg-[rgba(212,234,247,0.04)] border border-[rgba(212,234,247,0.09)] rounded-[14px] rounded-tl-[4px] px-4 py-3.5">
+
+      <div className="max-w-[85%] sm:max-w-[78%]">
+        {/* Label row */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-[9px] font-sans text-[#8aaab8]">ClinicCare AI</span>
+          <AgentBadge agent={agentLabel} />
+        </div>
+
+        {/* Bubble */}
+        <div className={cn(
+          'rounded-[14px] rounded-tl-[4px] px-4 py-3',
+          msg.uiData?.type === 'booking_confirm'
+            ? 'bg-[#0a8878]/5 border border-[#0a8878]/15'
+            : 'bg-white border border-[#c8dde6]'
+        )}>
+          {msg.uiData?.type === 'register_prompt' ? (
+            <RegisterPrompt data={msg.uiData} onAction={onAction} />
+          ) : msg.uiData?.type === 'slot_picker' ? (
+            <SlotPicker data={msg.uiData} onSlotSelect={onSlotSelect} />
+          ) : msg.uiData?.type === 'booking_confirm' ? (
+            <BookingCard data={msg.uiData} />
+          ) : (
+            <AssistantContent content={msg.content} />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Typing Indicator ─────────────────────────────────────────────────────────
+
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start gap-2.5">
+      <div className="w-7 h-7 rounded-full bg-[#e8f2f6] border border-[#c8dde6] flex items-center justify-center flex-shrink-0">
+        <svg className="w-3.5 h-3.5 text-[#0a8878] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      </div>
+      <div className="bg-white border border-[#c8dde6] rounded-[14px] rounded-tl-[4px] px-4 py-3.5">
         <div className="flex gap-1.5 items-center">
           {[0, 150, 300].map((delay) => (
             <div
               key={delay}
-              className="w-1.5 h-1.5 bg-sky/40 rounded-full animate-bounce"
+              className="w-1.5 h-1.5 bg-[#0a8878]/40 rounded-full animate-bounce"
               style={{ animationDelay: `${delay}ms` }}
             />
           ))}
@@ -164,15 +397,27 @@ function TypingIndicator() {
   )
 }
 
+// ─── Parse __AGENT_UI__ prefix ───────────────────────────────────────────────
+
+function parseAgentUI(content: string): { uiData: AgentUIData; text: '' } | null {
+  if (!content.startsWith('__AGENT_UI__:')) return null
+  try {
+    const json = content.slice('__AGENT_UI__:'.length)
+    const data = JSON.parse(json) as AgentUIData
+    return { uiData: data, text: '' }
+  } catch {
+    return null
+  }
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function AgentPage() {
   const { user } = useAuthStore()
   const router = useRouter()
 
-  // Guard
   useEffect(() => {
-    if (user && user.role === 'doctor') {
-      router.replace('/rag')
-    }
+    if (user && user.role === 'doctor') router.replace('/rag')
   }, [user, router])
 
   const [messages, setMessages] = useState<ConversationMessage[]>([
@@ -189,18 +434,13 @@ export default function AgentPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   useEffect(() => {
-    scrollToBottom()
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return
-
-    const userMessage = input.trim()
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || loading) return
+    const userMessage = text.trim()
     setInput('')
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }])
     setLoading(true)
@@ -211,12 +451,15 @@ export default function AgentPage() {
 
       setThreadId(data.thread_id)
       setCurrentAgent(data.current_agent)
+
+      const parsed = parseAgentUI(data.response)
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: data.response,
+          content: parsed ? '' : data.response,
           agent: data.current_agent,
+          uiData: parsed?.uiData,
         },
       ])
     } catch (err: unknown) {
@@ -226,7 +469,7 @@ export default function AgentPage() {
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error processing your request. Please try again.',
+          content: 'Sorry, I encountered an error. Please try again.',
           agent: 'supervisor',
         },
       ])
@@ -235,11 +478,18 @@ export default function AgentPage() {
     }
   }
 
+  const handleSend = () => sendMessage(input)
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  const handleSlotSelect = (slot: string, date: string, patientName: string, doctorName: string) => {
+    const msg = `Book ${slot} on ${date} for ${patientName} with ${doctorName}`
+    sendMessage(msg)
   }
 
   const startNewConversation = () => {
@@ -256,9 +506,7 @@ export default function AgentPage() {
 
   const copyThreadId = () => {
     if (threadId) {
-      navigator.clipboard.writeText(threadId).then(() => {
-        toast.success('Thread ID copied')
-      })
+      navigator.clipboard.writeText(threadId).then(() => toast.success('Thread ID copied'))
     }
   }
 
@@ -267,19 +515,17 @@ export default function AgentPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
         <div>
-          <h2 className="text-lg font-semibold text-ice">AI Agent</h2>
+          <h2 className="text-lg font-semibold text-[#052838]">AI Agent</h2>
           <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-xs text-[rgba(180,200,220,0.45)]">Multi-agent assistant</p>
-            {currentAgent && (
-              <AgentBadge agent={currentAgent} />
-            )}
+            <p className="text-xs text-[#5a8898]">Multi-agent assistant</p>
+            {currentAgent && <AgentBadge agent={currentAgent} />}
           </div>
         </div>
         <div className="flex items-center gap-2">
           {threadId && (
             <button
               onClick={copyThreadId}
-              className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] hover:text-sky transition-colors bg-white/[0.03] border border-[rgba(212,234,247,0.08)] rounded-[8px] px-2 py-1 max-w-[150px] truncate"
+              className="text-[10px] font-sans text-[#8aaab8] hover:text-[#0a8878] transition-colors bg-[#e8f2f6] border border-[#c8dde6] rounded-[8px] px-2 py-1 max-w-[150px] truncate"
               title={`Thread: ${threadId}`}
             >
               {threadId.slice(0, 8)}...
@@ -294,18 +540,18 @@ export default function AgentPage() {
         </div>
       </div>
 
-      {/* Messages area */}
+      {/* Messages */}
       <Card className="flex-1 overflow-hidden flex flex-col min-h-0">
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           {messages.map((msg, i) => (
-            <MessageBubble key={i} msg={msg} />
+            <MessageBubble key={i} msg={msg} onSlotSelect={handleSlotSelect} onAction={sendMessage} />
           ))}
           {loading && <TypingIndicator />}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area */}
-        <div className="border-t border-[rgba(212,234,247,0.07)] px-4 py-3">
+        {/* Input */}
+        <div className="border-t border-[#c8dde6] px-4 py-3">
           <div className="flex gap-3 items-end">
             <textarea
               ref={inputRef}
@@ -314,7 +560,7 @@ export default function AgentPage() {
               onKeyDown={handleKeyDown}
               placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
               rows={1}
-              className="flex-1 bg-[#121620] text-ice placeholder-[rgba(180,200,220,0.25)] border border-[rgba(212,234,247,0.10)] rounded-[10px] px-3.5 py-2.5 text-sm font-sans resize-none focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/20 transition-all max-h-32 overflow-y-auto"
+              className="flex-1 bg-white text-[#052838] placeholder-[#8aaab8] border border-[#c8dde6] rounded-[10px] px-3.5 py-2.5 text-sm font-sans resize-none focus:outline-none focus:border-[#0a8878]/50 focus:ring-1 focus:ring-[#0a8878]/20 transition-all max-h-32 overflow-y-auto"
               style={{ minHeight: '42px' }}
             />
             <Button
@@ -329,7 +575,7 @@ export default function AgentPage() {
               </svg>
             </Button>
           </div>
-          <p className="text-[9px] font-mono text-[rgba(180,200,220,0.2)] mt-2 text-center">
+          <p className="text-[9px] font-sans text-[#8aaab8] mt-2 text-center">
             Powered by LangGraph multi-agent system · ReceptionistAgent · SchedulingAgent · NotificationAgent
           </p>
         </div>

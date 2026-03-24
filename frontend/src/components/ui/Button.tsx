@@ -11,26 +11,27 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary:
-    'bg-sky text-void font-semibold hover:bg-sky/90 active:bg-sky/80 disabled:bg-sky/30 disabled:text-void/50',
+    'text-white font-semibold hover:opacity-90 active:opacity-80 disabled:opacity-40',
   secondary:
-    'bg-[rgba(212,234,247,0.06)] text-ice border border-[rgba(212,234,247,0.10)] hover:bg-[rgba(212,234,247,0.10)] active:bg-[rgba(212,234,247,0.08)] disabled:opacity-40',
+    'bg-white text-[#052838] border border-[#c8dde6] hover:bg-[#e8f2f6] hover:border-[#a0c4d4] active:bg-[#dceef4] disabled:opacity-40',
   danger:
-    'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 active:bg-red-500/15 disabled:opacity-40',
+    'bg-[#fff2f2] text-[#c82020] border border-[rgba(200,32,32,0.2)] hover:bg-[rgba(200,32,32,0.12)] active:bg-[rgba(200,32,32,0.15)] disabled:opacity-40',
   ghost:
-    'text-[rgba(180,200,220,0.6)] hover:text-ice hover:bg-white/5 active:bg-white/10 disabled:opacity-40',
+    'text-[#5a8898] hover:text-[#052838] hover:bg-[#e8f2f6] active:bg-[#dceef4] disabled:opacity-40',
 }
 
 const sizeStyles = {
   sm: 'px-3 py-1.5 text-xs rounded-[8px] gap-1.5',
-  md: 'px-4 py-2 text-sm rounded-[10px] gap-2',
-  lg: 'px-6 py-3 text-base rounded-[10px] gap-2',
+  md: 'px-4 py-2 text-sm rounded-[9px] gap-2',
+  lg: 'px-5 py-2.5 text-sm rounded-[9px] gap-2',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { variant = 'primary', size = 'md', loading, disabled, children, className, ...props },
+    { variant = 'primary', size = 'md', loading, disabled, children, className, style, ...props },
     ref
   ) => {
+    const isPrimary = variant === 'primary'
     return (
       <button
         ref={ref}
@@ -42,6 +43,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           (disabled || loading) && 'cursor-not-allowed',
           className
         )}
+        style={isPrimary ? {
+          background: '#0a8878',
+          boxShadow: '0 2px 10px rgba(10,136,120,0.3)',
+          ...style,
+        } : style}
         {...props}
       >
         {loading && <Spinner size="sm" />}

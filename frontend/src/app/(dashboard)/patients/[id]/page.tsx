@@ -247,7 +247,7 @@ function EditPatientModal({
         />
 
         <div className="rounded-[10px] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-          <p className="text-xs text-amber-400/80 font-mono">
+          <p className="text-xs text-amber-400/80 font-sans">
             If this patient has embedded visit records, saving will clear those embeddings.
             Admin must re-run the embedding pipeline after editing.
           </p>
@@ -263,20 +263,20 @@ function EditPatientModal({
         </div>
 
         {/* Delete patient */}
-        <div className="border-t border-[rgba(212,234,247,0.07)] pt-4 mt-2">
+        <div className="border-t border-[#c8dde6] pt-4 mt-2">
           {!confirmDelete ? (
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="text-xs text-red-400/70 hover:text-red-400 font-mono transition-colors"
+              className="text-xs text-red-400/70 hover:text-red-400 font-sans transition-colors"
             >
               Delete this patient permanently
             </button>
           ) : (
             <div className="rounded-[10px] border border-red-500/30 bg-red-500/5 p-4 space-y-3">
               <p className="text-sm font-semibold text-red-400">Permanently delete patient?</p>
-              <p className="text-xs text-[rgba(180,200,220,0.6)] leading-relaxed">
-                This will permanently delete <span className="text-ice font-medium">{patient.name}</span>,
+              <p className="text-xs text-[#5a8898] leading-relaxed">
+                This will permanently delete <span className="text-[#052838] font-medium">{patient.name}</span>,
                 all their visit records, and all ChromaDB embeddings.
                 <span className="text-red-400 font-medium"> This cannot be undone.</span>
               </p>
@@ -318,21 +318,21 @@ function PatientHeader({ patient, onEdit, onExportPdf, onEmailPdf }: {
     <Card className="p-5">
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className="w-14 h-14 rounded-2xl bg-sky/10 border border-sky/20 flex items-center justify-center flex-shrink-0">
-          <span className="text-sky text-xl font-mono font-semibold">
+          <span className="text-sky text-xl font-sans font-semibold">
             {patient.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
           </span>
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <h2 className="text-lg font-bold text-ice">{patient.name}</h2>
+            <h2 className="text-lg font-bold text-[#052838]">{patient.name}</h2>
             <Badge variant="default">{patient.blood_group}</Badge>
             {patient.sex && (
               <Badge variant="muted">{patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : patient.sex}</Badge>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-mono text-[rgba(180,200,220,0.5)] mb-3">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-sans text-[#5a8898] mb-3">
             <span>{patient.age} years old</span>
             <span>{patient.phone}</span>
             {patient.email && <span>{patient.email}</span>}
@@ -360,12 +360,12 @@ function PatientHeader({ patient, onEdit, onExportPdf, onEmailPdf }: {
 
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
           <div className="text-right">
-            <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider">Total Visits</p>
-            <p className="font-mono text-2xl text-sky font-semibold">{patient.total_visits}</p>
+            <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider">Total Visits</p>
+            <p className="font-sans text-2xl text-sky font-semibold">{patient.total_visits}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider">Last Visit</p>
-            <p className="font-mono text-xs text-[rgba(180,200,220,0.6)]">{formatDate(patient.last_visit_date)}</p>
+            <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider">Last Visit</p>
+            <p className="font-sans text-xs text-[#5a8898]">{formatDate(patient.last_visit_date)}</p>
           </div>
           {patient.pending_followup_date && (
             <Badge variant="warning">Follow-up: {formatDate(patient.pending_followup_date)}</Badge>
@@ -548,7 +548,7 @@ function VisitCard({
     ? 'text-teal'
     : visit.embedding_status === 'failed'
     ? 'text-red-400'
-    : 'text-[rgba(180,200,220,0.35)]'
+    : 'text-[#8aaab8]'
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteVisit(patientId, visit.id),
@@ -562,25 +562,25 @@ function VisitCard({
   })
 
   return (
-    <div className="border-l-2 border-[rgba(212,234,247,0.10)] pl-4 pb-6 relative">
+    <div className="border-l-2 border-[#c8dde6] pl-4 pb-6 relative">
       <div className="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-sky/40 border-2 border-sky/20" />
 
       <Card className="overflow-hidden">
         <div
           onClick={() => setExpanded((v) => !v)}
-          className="px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+          className="px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-[#e8f2f6] transition-colors"
         >
           <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-            <span className="font-mono text-xs text-sky">{formatDate(visit.visit_date)}</span>
+            <span className="font-sans text-xs text-sky">{formatDate(visit.visit_date)}</span>
             <Badge variant="muted">{visit.visit_type}</Badge>
-            <span className="text-sm font-medium text-ice truncate">{visit.chief_complaint}</span>
+            <span className="text-sm font-medium text-[#052838] truncate">{visit.chief_complaint}</span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className={cn('text-[9px] font-mono uppercase', embeddingColor)}>
+            <span className={cn('text-[9px] font-sans uppercase', embeddingColor)}>
               {visit.embedding_status}
             </span>
             <svg
-              className={cn('w-4 h-4 text-[rgba(180,200,220,0.3)] transition-transform', expanded && 'rotate-180')}
+              className={cn('w-4 h-4 text-[#8aaab8] transition-transform', expanded && 'rotate-180')}
               fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -589,40 +589,40 @@ function VisitCard({
         </div>
 
         {expanded && (
-          <div className="px-4 pb-4 pt-1 border-t border-[rgba(212,234,247,0.06)] space-y-3">
+          <div className="px-4 pb-4 pt-1 border-t border-[#c8dde6] space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {visit.weight_kg && (
                 <div>
-                  <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-0.5">Weight</p>
-                  <p className="text-sm font-mono text-ice">{visit.weight_kg}kg</p>
+                  <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-0.5">Weight</p>
+                  <p className="text-sm font-sans text-[#052838]">{visit.weight_kg}kg</p>
                 </div>
               )}
               {visit.bp && (
                 <div>
-                  <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-0.5">BP</p>
-                  <p className="text-sm font-mono text-ice">{visit.bp}</p>
+                  <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-0.5">BP</p>
+                  <p className="text-sm font-sans text-[#052838]">{visit.bp}</p>
                 </div>
               )}
             </div>
             <div>
-              <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-1">Symptoms</p>
-              <p className="text-sm text-[rgba(180,200,220,0.75)] leading-relaxed">{visit.symptoms}</p>
+              <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-1">Symptoms</p>
+              <p className="text-sm text-[#5a8898] leading-relaxed">{visit.symptoms}</p>
             </div>
             <div>
-              <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-1">Diagnosis</p>
-              <p className="text-sm text-ice font-medium leading-relaxed">{visit.diagnosis}</p>
+              <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-1">Diagnosis</p>
+              <p className="text-sm text-[#052838] font-medium leading-relaxed">{visit.diagnosis}</p>
             </div>
             {visit.medications?.length > 0 && (
               <div>
-                <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">Medications</p>
+                <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">Medications</p>
                 <div className="space-y-1.5">
                   {visit.medications.map((med, i) => (
-                    <div key={i} className="flex flex-wrap gap-x-3 gap-y-1 bg-white/[0.03] rounded-[8px] px-3 py-2">
+                    <div key={i} className="flex flex-wrap gap-x-3 gap-y-1 bg-[#e8f2f6] rounded-[8px] px-3 py-2">
                       <span className="text-sm font-medium text-sky">{med.name}</span>
-                      <span className="text-xs font-mono text-[rgba(180,200,220,0.55)]">{med.dose}</span>
-                      <span className="text-xs font-mono text-[rgba(180,200,220,0.55)]">{med.frequency}</span>
-                      <span className="text-xs font-mono text-[rgba(180,200,220,0.4)]">{med.duration}</span>
-                      {med.notes && <span className="text-xs text-[rgba(180,200,220,0.35)]">{med.notes}</span>}
+                      <span className="text-xs font-sans text-[#5a8898]">{med.dose}</span>
+                      <span className="text-xs font-sans text-[#5a8898]">{med.frequency}</span>
+                      <span className="text-xs font-sans text-[#5a8898]">{med.duration}</span>
+                      {med.notes && <span className="text-xs text-[#8aaab8]">{med.notes}</span>}
                     </div>
                   ))}
                 </div>
@@ -630,21 +630,21 @@ function VisitCard({
             )}
             {visit.notes && (
               <div>
-                <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-1">Notes</p>
-                <p className="text-sm text-[rgba(180,200,220,0.6)] leading-relaxed">{visit.notes}</p>
+                <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-1">Notes</p>
+                <p className="text-sm text-[#5a8898] leading-relaxed">{visit.notes}</p>
               </div>
             )}
             {visit.followup_required && (
               <div className="flex items-center gap-2">
                 <Badge variant="warning">Follow-up Required</Badge>
                 {visit.followup_date && (
-                  <span className="text-xs font-mono text-yellow-400">{formatDate(visit.followup_date)}</span>
+                  <span className="text-xs font-sans text-yellow-400">{formatDate(visit.followup_date)}</span>
                 )}
               </div>
             )}
 
             <div className="flex items-center justify-between pt-1">
-              <span className="text-[10px] font-mono text-[rgba(180,200,220,0.25)]">{visit.doctor_name}</span>
+              <span className="text-[10px] font-sans text-[#8aaab8]">{visit.doctor_name}</span>
 
               <div className="flex items-center gap-2">
                 {canExport && (
@@ -657,13 +657,13 @@ function VisitCard({
                           triggerBlobDownload(res.data as Blob, `visit_${visit.id}.pdf`)
                         } catch { toast.error('PDF export failed') }
                       }}
-                      className="text-[11px] font-mono text-[rgba(180,200,220,0.35)] hover:text-sky transition-colors"
+                      className="text-[11px] font-sans text-[#8aaab8] hover:text-sky transition-colors"
                     >
                       PDF
                     </button>
                     {patientEmail && (
                       <>
-                        <span className="text-[rgba(180,200,220,0.2)]">·</span>
+                        <span className="text-[#8aaab8]">·</span>
                         <button
                           onClick={async (e) => {
                             e.stopPropagation()
@@ -675,7 +675,7 @@ function VisitCard({
                               toast.error(error?.response?.data?.detail || 'Failed to send email')
                             }
                           }}
-                          className="text-[11px] font-mono text-[rgba(180,200,220,0.35)] hover:text-teal transition-colors"
+                          className="text-[11px] font-sans text-[#8aaab8] hover:text-teal transition-colors"
                         >
                           Email
                         </button>
@@ -685,17 +685,17 @@ function VisitCard({
                 )}
                 {canEdit && !confirmDelete && (
                   <>
-                    {canExport && <span className="text-[rgba(180,200,220,0.2)]">·</span>}
+                    {canExport && <span className="text-[#8aaab8]">·</span>}
                     <button
                       onClick={(e) => { e.stopPropagation(); setShowEditModal(true) }}
-                      className="text-[11px] font-mono text-sky/60 hover:text-sky transition-colors"
+                      className="text-[11px] font-sans text-sky/60 hover:text-sky transition-colors"
                     >
                       Edit
                     </button>
-                    <span className="text-[rgba(180,200,220,0.2)]">·</span>
+                    <span className="text-[#8aaab8]">·</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
-                      className="text-[11px] font-mono text-red-400/50 hover:text-red-400 transition-colors"
+                      className="text-[11px] font-sans text-red-400/50 hover:text-red-400 transition-colors"
                     >
                       Delete
                     </button>
@@ -774,7 +774,7 @@ function RAGPanel({ patientId }: { patientId: string }) {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <h3 className="text-sm font-semibold text-ice mb-3">Ask About This Patient</h3>
+        <h3 className="text-sm font-semibold text-[#052838] mb-3">Ask About This Patient</h3>
         <Textarea
           placeholder="What medications has this patient been prescribed? Any recent diagnoses?"
           value={query}
@@ -810,19 +810,19 @@ function RAGPanel({ patientId }: { patientId: string }) {
       {ragResult && (
         <Card className="p-4 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-xs font-mono text-[rgba(180,200,220,0.5)] uppercase tracking-wider">Clinical Answer</h4>
+            <h4 className="text-xs font-sans text-[#5a8898] uppercase tracking-wider">Clinical Answer</h4>
             <div className="flex items-center gap-2">
               {ragResult.cached && <Badge variant="success">Cached</Badge>}
-              <span className="text-[10px] font-mono text-[rgba(180,200,220,0.3)]">
+              <span className="text-[10px] font-sans text-[#8aaab8]">
                 {ragResult.retrieval_count} sources
               </span>
             </div>
           </div>
-          <p className="text-sm text-ice leading-relaxed whitespace-pre-wrap">{ragResult.answer}</p>
+          <p className="text-sm text-[#052838] leading-relaxed whitespace-pre-wrap">{ragResult.answer}</p>
 
           {ragResult.sources?.length > 0 && (
             <div>
-              <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">Sources</p>
+              <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">Sources</p>
               <div className="space-y-2">
                 {ragResult.sources.map((src, i) => (
                   <SourceCard key={i} source={src} />
@@ -837,14 +837,14 @@ function RAGPanel({ patientId }: { patientId: string }) {
       {briefResult && (
         <Card className="p-4 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-xs font-mono text-[rgba(180,200,220,0.5)] uppercase tracking-wider">Pre-visit Brief</h4>
+            <h4 className="text-xs font-sans text-[#5a8898] uppercase tracking-wider">Pre-visit Brief</h4>
             {briefResult.cached && <Badge variant="success">Cached</Badge>}
           </div>
-          <p className="text-sm text-ice leading-relaxed whitespace-pre-wrap">{briefResult.brief}</p>
+          <p className="text-sm text-[#052838] leading-relaxed whitespace-pre-wrap">{briefResult.brief}</p>
 
           {briefResult.sources?.length > 0 && (
             <div>
-              <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">Based On</p>
+              <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">Based On</p>
               <div className="space-y-2">
                 {briefResult.sources.map((src, i) => (
                   <SourceCard key={i} source={src} />
@@ -860,15 +860,15 @@ function RAGPanel({ patientId }: { patientId: string }) {
 
 function SourceCard({ source }: { source: RAGSource }) {
   return (
-    <div className="bg-white/[0.03] border border-[rgba(212,234,247,0.06)] rounded-[10px] px-3 py-2.5">
+    <div className="bg-[#e8f2f6] border border-[#c8dde6] rounded-[10px] px-3 py-2.5">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-xs font-mono text-sky">{formatDate(source.visit_date)}</span>
-        <span className="text-[10px] font-mono text-[rgba(180,200,220,0.35)]">
+        <span className="text-xs font-sans text-sky">{formatDate(source.visit_date)}</span>
+        <span className="text-[10px] font-sans text-[#8aaab8]">
           score: {formatScore(source.rerank_score)}
         </span>
       </div>
-      <p className="text-xs text-ice font-medium">{source.diagnosis}</p>
-      <p className="text-[10px] text-[rgba(180,200,220,0.4)] mt-0.5">
+      <p className="text-xs text-[#052838] font-medium">{source.diagnosis}</p>
+      <p className="text-[10px] text-[#5a8898] mt-0.5">
         {source.visit_type} · Dr. {source.doctor_name}
       </p>
     </div>
@@ -923,24 +923,24 @@ function VitalSignsCharts({ visits }: { visits: VisitDocument[] }) {
   const chartStyle = {
     fontSize: 10,
     fontFamily: "'Azeret Mono', monospace",
-    fill: 'rgba(180,200,220,0.45)',
+    fill: '#5a8898',
   }
 
   return (
     <div className="space-y-4">
       {bpData.length >= 2 && (
         <Card className="p-4">
-          <p className="text-xs font-mono text-[rgba(180,200,220,0.45)] uppercase tracking-wider mb-3">
+          <p className="text-xs font-sans text-[#5a8898] uppercase tracking-wider mb-3">
             Blood Pressure Trend
           </p>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={bpData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,234,247,0.06)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#c8dde6" />
               <XAxis dataKey="date" tick={chartStyle} tickLine={false} axisLine={false} />
               <YAxis tick={chartStyle} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
               <Tooltip
-                contentStyle={{ background: '#121620', border: '1px solid rgba(212,234,247,0.1)', borderRadius: 8, fontSize: 11 }}
-                labelStyle={{ color: 'rgba(180,200,220,0.6)' }}
+                contentStyle={{ background: '#ffffff', border: '1px solid #c8dde6', borderRadius: 8, fontSize: 11 }}
+                labelStyle={{ color: '#5a8898' }}
                 itemStyle={{ color: '#38bdf8' }}
               />
               <Legend wrapperStyle={chartStyle} />
@@ -953,17 +953,17 @@ function VitalSignsCharts({ visits }: { visits: VisitDocument[] }) {
 
       {weightData.length >= 2 && (
         <Card className="p-4">
-          <p className="text-xs font-mono text-[rgba(180,200,220,0.45)] uppercase tracking-wider mb-3">
+          <p className="text-xs font-sans text-[#5a8898] uppercase tracking-wider mb-3">
             Weight Trend (kg)
           </p>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={weightData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,234,247,0.06)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#c8dde6" />
               <XAxis dataKey="date" tick={chartStyle} tickLine={false} axisLine={false} />
               <YAxis tick={chartStyle} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
               <Tooltip
-                contentStyle={{ background: '#121620', border: '1px solid rgba(212,234,247,0.1)', borderRadius: 8, fontSize: 11 }}
-                labelStyle={{ color: 'rgba(180,200,220,0.6)' }}
+                contentStyle={{ background: '#ffffff', border: '1px solid #c8dde6', borderRadius: 8, fontSize: 11 }}
+                labelStyle={{ color: '#5a8898' }}
                 itemStyle={{ color: '#a78bfa' }}
               />
               <Line type="monotone" dataKey="weight" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3, fill: '#a78bfa' }} name="Weight (kg)" />
@@ -1079,18 +1079,18 @@ function AddVisitModal({ patientId, open, onClose }: { patientId: string; open: 
         {/* Medications */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-[rgba(180,200,220,0.65)] uppercase tracking-wider">Medications</p>
+            <p className="text-xs font-medium text-[#5a8898] uppercase tracking-wider">Medications</p>
             <button
               type="button"
               onClick={() => setMedCount((c) => c + 1)}
-              className="text-[10px] font-mono text-sky hover:text-sky/80 transition-colors"
+              className="text-[10px] font-sans text-sky hover:text-sky/80 transition-colors"
             >
               + Add medication
             </button>
           </div>
           <div className="space-y-2">
             {Array.from({ length: medCount }).map((_, i) => (
-              <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white/[0.02] rounded-[10px] p-3">
+              <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#e8f2f6] rounded-[10px] p-3">
                 <Input
                   placeholder="Drug name"
                   error={errors.medications?.[i]?.name?.message}
@@ -1127,10 +1127,10 @@ function AddVisitModal({ patientId, open, onClose }: { patientId: string; open: 
           <input
             type="checkbox"
             id="followup_required"
-            className="w-4 h-4 rounded border-[rgba(212,234,247,0.2)] bg-[#121620] accent-sky"
+            className="w-4 h-4 rounded border-[#c8dde6] bg-white accent-sky"
             {...register('followup_required')}
           />
-          <label htmlFor="followup_required" className="text-sm text-ice cursor-pointer">
+          <label htmlFor="followup_required" className="text-sm text-[#052838] cursor-pointer">
             Follow-up Required
           </label>
         </div>
@@ -1212,7 +1212,7 @@ export default function PatientDetailPage() {
   if (!patient) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-[rgba(180,200,220,0.4)]">Patient not found</p>
+        <p className="text-[#5a8898]">Patient not found</p>
       </div>
     )
   }
@@ -1237,7 +1237,7 @@ export default function PatientDetailPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {/* Contact & Identity */}
           <Card className="p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-ice border-b border-[rgba(212,234,247,0.07)] pb-3">
+            <h3 className="text-sm font-semibold text-[#052838] border-b border-[#c8dde6] pb-3">
               Contact Information
             </h3>
             <div className="space-y-3">
@@ -1249,8 +1249,8 @@ export default function PatientDetailPage() {
                 { label: 'Registered', value: formatDate(patient.registered_date) },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-start justify-between gap-4">
-                  <span className="text-[11px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider flex-shrink-0">{label}</span>
-                  <span className="text-sm text-ice text-right">{value}</span>
+                  <span className="text-[11px] font-sans text-[#8aaab8] uppercase tracking-wider flex-shrink-0">{label}</span>
+                  <span className="text-sm text-[#052838] text-right">{value}</span>
                 </div>
               ))}
             </div>
@@ -1258,12 +1258,12 @@ export default function PatientDetailPage() {
 
           {/* Medical alerts (read-only — no diagnosis/visits) */}
           <Card className="p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-ice border-b border-[rgba(212,234,247,0.07)] pb-3">
+            <h3 className="text-sm font-semibold text-[#052838] border-b border-[#c8dde6] pb-3">
               Medical Alerts
             </h3>
             <div className="space-y-4">
               <div>
-                <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">Known Allergies</p>
+                <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">Known Allergies</p>
                 {patient.known_allergies?.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {patient.known_allergies.map((a) => (
@@ -1271,11 +1271,11 @@ export default function PatientDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-[rgba(180,200,220,0.3)]">None on record</p>
+                  <p className="text-xs text-[#8aaab8]">None on record</p>
                 )}
               </div>
               <div>
-                <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">Chronic Conditions</p>
+                <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">Chronic Conditions</p>
                 {patient.chronic_conditions?.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {patient.chronic_conditions.map((c) => (
@@ -1283,21 +1283,21 @@ export default function PatientDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-[rgba(180,200,220,0.3)]">None on record</p>
+                  <p className="text-xs text-[#8aaab8]">None on record</p>
                 )}
               </div>
-              <div className="pt-2 border-t border-[rgba(212,234,247,0.06)] space-y-2">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-[rgba(180,200,220,0.35)]">Total Visits</span>
+              <div className="pt-2 border-t border-[#c8dde6] space-y-2">
+                <div className="flex justify-between text-xs font-sans">
+                  <span className="text-[#8aaab8]">Total Visits</span>
                   <span className="text-sky">{patient.total_visits}</span>
                 </div>
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-[rgba(180,200,220,0.35)]">Last Visit</span>
-                  <span className="text-ice">{formatDate(patient.last_visit_date) || '—'}</span>
+                <div className="flex justify-between text-xs font-sans">
+                  <span className="text-[#8aaab8]">Last Visit</span>
+                  <span className="text-[#052838]">{formatDate(patient.last_visit_date) || '—'}</span>
                 </div>
                 {patient.pending_followup_date && (
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-[rgba(180,200,220,0.35)]">Follow-up Due</span>
+                  <div className="flex justify-between text-xs font-sans">
+                    <span className="text-[#8aaab8]">Follow-up Due</span>
                     <span className="text-amber-400">{formatDate(patient.pending_followup_date)}</span>
                   </div>
                 )}
@@ -1316,9 +1316,9 @@ export default function PatientDetailPage() {
             )}
 
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-ice">
+              <h3 className="text-sm font-semibold text-[#052838]">
                 Visit History
-                <span className="ml-2 font-mono text-sky">{sortedVisits.length}</span>
+                <span className="ml-2 font-sans text-sky">{sortedVisits.length}</span>
               </h3>
               {user?.role === 'doctor' && (
                 <Button size="sm" onClick={() => setShowVisitModal(true)}>
@@ -1332,7 +1332,7 @@ export default function PatientDetailPage() {
 
             {sortedVisits.length === 0 ? (
               <Card className="p-8 text-center">
-                <p className="text-[rgba(180,200,220,0.3)] text-sm">No visits recorded yet</p>
+                <p className="text-[#8aaab8] text-sm">No visits recorded yet</p>
               </Card>
             ) : (
               <div className="space-y-0 ml-2">

@@ -30,9 +30,9 @@ function fmtLatency(ms: number) {
 function ServiceDot({ label, value }: { label: string; value: string }) {
   const ok = value === 'connected' || value === 'ok' || value === 'healthy'
   return (
-    <span className="flex items-center gap-1.5 text-[11px] font-mono">
+    <span className="flex items-center gap-1.5 text-[11px] font-sans">
       <span className={cn('w-1.5 h-1.5 rounded-full', ok ? 'bg-teal' : 'bg-red-400')} />
-      <span className="text-[rgba(180,200,220,0.45)]">{label}</span>
+      <span className="text-[#5a8898]">{label}</span>
       <span className={ok ? 'text-teal' : 'text-red-400'}>{value}</span>
     </span>
   )
@@ -209,25 +209,25 @@ export default function AdminPage() {
       {/* ── Page header ────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-ice">Admin Panel</h2>
-          <p className="text-xs text-[rgba(180,200,220,0.4)] mt-0.5">
+          <h2 className="text-lg font-semibold text-[#052838]">Admin Panel</h2>
+          <p className="text-xs text-[#5a8898] mt-0.5">
             System management · embedding pipeline · agent monitoring
           </p>
         </div>
 
         {/* Health strip */}
-        <div className="flex items-center gap-3 bg-white/[0.025] border border-[rgba(212,234,247,0.07)] rounded-[10px] px-4 py-2.5 shrink-0">
+        <div className="flex items-center gap-3 bg-[#f0f6f8] border border-[#c8dde6] rounded-[10px] px-4 py-2.5 shrink-0">
           {health
             ? Object.entries(health)
                 .filter(([k]) => k !== 'status')
                 .slice(0, 4)
                 .map(([k, v]) => <ServiceDot key={k} label={k} value={String(v)} />)
-            : <span className="text-[11px] font-mono text-[rgba(180,200,220,0.3)]">Checking services…</span>
+            : <span className="text-[11px] font-sans text-[#8aaab8]">Checking services…</span>
           }
           {health && (
             <>
-              <span className="w-px h-3.5 bg-[rgba(212,234,247,0.08)]" />
-              <span className={cn('text-[11px] font-semibold font-mono', isHealthy ? 'text-teal' : 'text-red-400')}>
+              <span className="w-px h-3.5 bg-[#e8f2f6]" />
+              <span className={cn('text-[11px] font-semibold font-sans', isHealthy ? 'text-teal' : 'text-red-400')}>
                 {isHealthy ? '● Healthy' : '● Degraded'}
               </span>
             </>
@@ -236,7 +236,7 @@ export default function AdminPage() {
       </div>
 
       {/* ── Tab strip ──────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-white/[0.02] border border-[rgba(212,234,247,0.07)] rounded-[12px] p-1">
+      <div className="flex gap-1 bg-[#e8f2f6] border border-[#c8dde6] rounded-[12px] p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -244,8 +244,8 @@ export default function AdminPage() {
             className={cn(
               'relative flex items-center gap-2 px-4 py-2 rounded-[9px] text-sm font-medium transition-all duration-150 flex-1 justify-center',
               tab === t.id
-                ? 'bg-[rgba(212,234,247,0.07)] text-ice shadow-sm'
-                : 'text-[rgba(180,200,220,0.45)] hover:text-[rgba(212,234,247,0.7)]'
+                ? 'bg-[#e8f2f6] text-[#052838] shadow-sm'
+                : 'text-[#5a8898] hover:text-[#052838]'
             )}
           >
             <span className={tab === t.id ? 'text-sky' : ''}>{t.icon}</span>
@@ -278,7 +278,7 @@ export default function AdminPage() {
                 label: 'Pending',
                 value: queueLoading ? '—' : String(queue?.pending ?? 0),
                 sub: 'Awaiting embedding',
-                color: (queue?.pending ?? 0) > 0 ? 'text-amber-400' : 'text-ice',
+                color: (queue?.pending ?? 0) > 0 ? 'text-amber-400' : 'text-[#052838]',
               },
               {
                 label: 'Agent Calls',
@@ -287,10 +287,10 @@ export default function AdminPage() {
                 color: 'text-sky',
               },
             ].map((s) => (
-              <div key={s.label} className="bg-white/[0.025] border border-[rgba(212,234,247,0.07)] rounded-[12px] px-5 py-4">
-                <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">{s.label}</p>
+              <div key={s.label} className="bg-[#f0f6f8] border border-[#c8dde6] rounded-[12px] px-5 py-4">
+                <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">{s.label}</p>
                 <p className={cn('text-3xl font-semibold', s.color)}>{s.value}</p>
-                <p className="text-[11px] text-[rgba(180,200,220,0.35)] mt-1">{s.sub}</p>
+                <p className="text-[11px] text-[#8aaab8] mt-1">{s.sub}</p>
               </div>
             ))}
           </div>
@@ -299,19 +299,19 @@ export default function AdminPage() {
           {queue && (
             <Card className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-ice">Embedding Coverage</p>
-                <span className="text-xs font-mono text-[rgba(180,200,220,0.4)]">
+                <p className="text-xs font-semibold text-[#052838]">Embedding Coverage</p>
+                <span className="text-xs font-sans text-[#5a8898]">
                   {queue.embedded} / {queue.embedded + queue.pending} visits · {queue.chroma_total} vectors
                 </span>
               </div>
-              <div className="h-2 bg-white/[0.04] rounded-full overflow-hidden">
+              <div className="h-2 bg-[#e8f2f6] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-sky to-teal rounded-full transition-all duration-700"
                   style={{ width: `${embeddedPct}%` }}
                 />
               </div>
               {queue.failed > 0 && (
-                <p className="mt-2 text-[11px] text-red-400 font-mono">
+                <p className="mt-2 text-[11px] text-red-400 font-sans">
                   ⚠ {queue.failed} visit(s) failed — go to Pipeline tab to retry
                 </p>
               )}
@@ -320,7 +320,7 @@ export default function AdminPage() {
 
           {/* System info */}
           <Card className="p-5">
-            <p className="text-xs font-semibold text-ice mb-3">System Information</p>
+            <p className="text-xs font-semibold text-[#052838] mb-3">System Information</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[
                 { label: 'Backend', value: 'localhost:8000' },
@@ -330,9 +330,9 @@ export default function AdminPage() {
                 { label: 'Database', value: 'MongoDB + Supabase' },
                 { label: 'Cache', value: 'Redis · 1hr TTL' },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between px-3 py-2 bg-white/[0.02] rounded-[8px]">
-                  <span className="text-[11px] text-[rgba(180,200,220,0.4)]">{item.label}</span>
-                  <span className="text-[11px] font-mono text-ice">{item.value}</span>
+                <div key={item.label} className="flex items-center justify-between px-3 py-2 bg-[#e8f2f6] rounded-[8px]">
+                  <span className="text-[11px] text-[#5a8898]">{item.label}</span>
+                  <span className="text-[11px] font-sans text-[#052838]">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -340,11 +340,11 @@ export default function AdminPage() {
 
           {/* ── Analytics ─────────────────────────────────────────────────── */}
           <div className="pt-1">
-            <p className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase tracking-wider mb-3 px-0.5">Analytics</p>
+            <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-3 px-0.5">Analytics</p>
             {analyticsLoading ? (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="animate-pulse h-48 bg-white/[0.03] rounded-[12px]" />
+                  <div key={i} className="animate-pulse h-48 bg-[#e8f2f6] rounded-[12px]" />
                 ))}
               </div>
             ) : analyticsData ? (
@@ -354,10 +354,10 @@ export default function AdminPage() {
                   {[
                     { label: 'Total Patients', value: analyticsData.total_patients, color: 'text-sky' },
                     { label: 'Total Visits', value: analyticsData.total_visits, color: 'text-teal' },
-                    { label: 'Staff Users', value: analyticsData.total_staff, color: 'text-ice' },
+                    { label: 'Staff Users', value: analyticsData.total_staff, color: 'text-[#052838]' },
                   ].map((s) => (
-                    <div key={s.label} className="bg-white/[0.025] border border-[rgba(212,234,247,0.07)] rounded-[12px] px-5 py-4">
-                      <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider mb-2">{s.label}</p>
+                    <div key={s.label} className="bg-[#f0f6f8] border border-[#c8dde6] rounded-[12px] px-5 py-4">
+                      <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-2">{s.label}</p>
                       <p className={cn('text-3xl font-semibold', s.color)}>{s.value}</p>
                     </div>
                   ))}
@@ -366,19 +366,19 @@ export default function AdminPage() {
                 {/* Charts */}
                 {(() => {
                   const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = require('recharts')
-                  const chartStyle = { fontSize: 10, fontFamily: "'Azeret Mono', monospace", fill: 'rgba(180,200,220,0.45)' }
-                  const tooltipStyle = { background: '#121620', border: '1px solid rgba(212,234,247,0.1)', borderRadius: 8, fontSize: 11 }
+                  const chartStyle = { fontSize: 10, fontFamily: "'Azeret Mono', monospace", fill: '#5a8898' }
+                  const tooltipStyle = { background: '#ffffff', border: '1px solid #c8dde6', borderRadius: 8, fontSize: 11 }
 
                   return (
                     <>
                       <Card className="p-4 mb-4">
-                        <p className="text-xs font-mono text-[rgba(180,200,220,0.45)] uppercase tracking-wider mb-4">Monthly Patient Registrations & Visits</p>
+                        <p className="text-xs font-sans text-[#5a8898] uppercase tracking-wider mb-4">Monthly Patient Registrations & Visits</p>
                         <ResponsiveContainer width="100%" height={200}>
                           <LineChart margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,234,247,0.06)" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#c8dde6" />
                             <XAxis dataKey="month" data={analyticsData.monthly_patients} tick={chartStyle} tickLine={false} axisLine={false} />
                             <YAxis tick={chartStyle} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'rgba(180,200,220,0.6)' }} />
+                            <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#5a8898' }} />
                             <Legend wrapperStyle={chartStyle} />
                             <Line data={analyticsData.monthly_patients} type="monotone" dataKey="count" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="New Patients" />
                             <Line data={analyticsData.monthly_visits} type="monotone" dataKey="count" stroke="#22d3ee" strokeWidth={2} dot={{ r: 3 }} name="Visits" strokeDasharray="5 3" />
@@ -389,10 +389,10 @@ export default function AdminPage() {
                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                         {analyticsData.top_diagnoses?.length > 0 && (
                           <Card className="p-4">
-                            <p className="text-xs font-mono text-[rgba(180,200,220,0.45)] uppercase tracking-wider mb-4">Top Diagnoses</p>
+                            <p className="text-xs font-sans text-[#5a8898] uppercase tracking-wider mb-4">Top Diagnoses</p>
                             <ResponsiveContainer width="100%" height={200}>
                               <BarChart data={analyticsData.top_diagnoses} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,234,247,0.06)" horizontal={false} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#c8dde6" horizontal={false} />
                                 <XAxis type="number" tick={chartStyle} tickLine={false} axisLine={false} />
                                 <YAxis
                                   type="category" dataKey="diagnosis" tick={{ ...chartStyle, fontSize: 9 }} tickLine={false} axisLine={false}
@@ -408,10 +408,10 @@ export default function AdminPage() {
 
                         {analyticsData.doctor_utilization?.length > 0 && (
                           <Card className="p-4">
-                            <p className="text-xs font-mono text-[rgba(180,200,220,0.45)] uppercase tracking-wider mb-4">Doctor Utilization (Visits)</p>
+                            <p className="text-xs font-sans text-[#5a8898] uppercase tracking-wider mb-4">Doctor Utilization (Visits)</p>
                             <ResponsiveContainer width="100%" height={200}>
                               <BarChart data={analyticsData.doctor_utilization} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,234,247,0.06)" />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#c8dde6" />
                                 <XAxis dataKey="doctor_name" tick={{ ...chartStyle, fontSize: 9 }} tickLine={false} axisLine={false}
                                   tickFormatter={(v: string) => v.split(' ')[0]} />
                                 <YAxis tick={chartStyle} tickLine={false} axisLine={false} />
@@ -428,7 +428,7 @@ export default function AdminPage() {
               </>
             ) : (
               <Card className="p-6 text-center">
-                <p className="text-[rgba(180,200,220,0.3)] text-sm">No analytics data available</p>
+                <p className="text-[#8aaab8] text-sm">No analytics data available</p>
               </Card>
             )}
           </div>
@@ -445,17 +445,17 @@ export default function AdminPage() {
           <Card className="p-5">
             <div className="flex items-center justify-between gap-6">
               <div>
-                <p className="text-sm font-semibold text-ice mb-0.5">Embedding Pipeline</p>
-                <p className="text-xs text-[rgba(180,200,220,0.4)]">
-                  Embeds all <span className="font-mono text-amber-400">pending</span> visits into ChromaDB via OpenAI
+                <p className="text-sm font-semibold text-[#052838] mb-0.5">Embedding Pipeline</p>
+                <p className="text-xs text-[#5a8898]">
+                  Embeds all <span className="font-sans text-amber-400">pending</span> visits into ChromaDB via OpenAI
                   {queue && queue.pending > 0 && (
-                    <span className="ml-1 font-mono text-amber-400">&mdash; {queue.pending} waiting</span>
+                    <span className="ml-1 font-sans text-amber-400">&mdash; {queue.pending} waiting</span>
                   )}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {isPipelineRunning && (
-                  <div className="flex items-center gap-2 text-sky text-xs font-mono mr-2">
+                  <div className="flex items-center gap-2 text-sky text-xs font-sans mr-2">
                     <Spinner size="sm" /> Running…
                   </div>
                 )}
@@ -483,17 +483,17 @@ export default function AdminPage() {
 
             {/* Last run inline result */}
             {lastRun && (
-              <div className="mt-4 flex items-center gap-6 border-t border-[rgba(212,234,247,0.06)] pt-4">
-                <span className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase tracking-wider">Last run</span>
+              <div className="mt-4 flex items-center gap-6 border-t border-[#c8dde6] pt-4">
+                <span className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider">Last run</span>
                 {[
-                  { label: 'Total', val: lastRun.total, cls: 'text-ice' },
+                  { label: 'Total', val: lastRun.total, cls: 'text-[#052838]' },
                   { label: 'Embedded', val: lastRun.embedded, cls: 'text-teal' },
-                  { label: 'Failed', val: lastRun.failed, cls: lastRun.failed > 0 ? 'text-red-400' : 'text-ice' },
+                  { label: 'Failed', val: lastRun.failed, cls: lastRun.failed > 0 ? 'text-red-400' : 'text-[#052838]' },
                   { label: 'Duration', val: `${lastRun.duration_seconds.toFixed(1)}s`, cls: 'text-sky' },
                 ].map((s) => (
                   <div key={s.label}>
-                    <span className="text-[10px] text-[rgba(180,200,220,0.35)] block">{s.label}</span>
-                    <span className={cn('font-mono text-base font-semibold', s.cls)}>{s.val}</span>
+                    <span className="text-[10px] text-[#8aaab8] block">{s.label}</span>
+                    <span className={cn('font-sans text-base font-semibold', s.cls)}>{s.val}</span>
                   </div>
                 ))}
               </div>
@@ -503,10 +503,10 @@ export default function AdminPage() {
           {/* Queue breakdown */}
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold text-ice">Queue Status</p>
+              <p className="text-xs font-semibold text-[#052838]">Queue Status</p>
               <button
                 onClick={() => refetchQueue()}
-                className="text-[11px] font-mono text-[rgba(180,200,220,0.35)] hover:text-sky transition-colors flex items-center gap-1"
+                className="text-[11px] font-sans text-[#8aaab8] hover:text-sky transition-colors flex items-center gap-1"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -518,7 +518,7 @@ export default function AdminPage() {
             {queueLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="animate-pulse h-9 bg-white/[0.03] rounded-[8px]" />
+                  <div key={i} className="animate-pulse h-9 bg-[#e8f2f6] rounded-[8px]" />
                 ))}
               </div>
             ) : queue ? (
@@ -529,20 +529,20 @@ export default function AdminPage() {
                   { label: 'Failed', value: queue.failed, total: Math.max(queue.failed, 1), color: 'bg-red-400' },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center gap-3">
-                    <span className="text-[11px] font-mono text-[rgba(180,200,220,0.4)] w-20 shrink-0">{row.label}</span>
-                    <div className="flex-1 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                    <span className="text-[11px] font-sans text-[#5a8898] w-20 shrink-0">{row.label}</span>
+                    <div className="flex-1 h-1.5 bg-[#e8f2f6] rounded-full overflow-hidden">
                       <div
                         className={cn('h-full rounded-full transition-all duration-500', row.color)}
                         style={{ width: row.total > 0 ? `${Math.round((row.value / row.total) * 100)}%` : '0%' }}
                       />
                     </div>
-                    <span className="text-xs font-mono text-ice w-10 text-right shrink-0">{row.value}</span>
+                    <span className="text-xs font-sans text-[#052838] w-10 text-right shrink-0">{row.value}</span>
                   </div>
                 ))}
-                <div className="flex items-center gap-3 pt-1 border-t border-[rgba(212,234,247,0.05)] mt-1">
-                  <span className="text-[11px] font-mono text-[rgba(180,200,220,0.4)] w-20 shrink-0">ChromaDB</span>
+                <div className="flex items-center gap-3 pt-1 border-t border-[#c8dde6] mt-1">
+                  <span className="text-[11px] font-sans text-[#5a8898] w-20 shrink-0">ChromaDB</span>
                   <div className="flex-1" />
-                  <span className="text-xs font-mono text-sky w-10 text-right shrink-0">{queue.chroma_total}</span>
+                  <span className="text-xs font-sans text-sky w-10 text-right shrink-0">{queue.chroma_total}</span>
                 </div>
               </div>
             ) : null}
@@ -555,13 +555,13 @@ export default function AdminPage() {
               className="w-full flex items-center justify-between px-5 py-4 text-left"
             >
               <div>
-                <p className="text-xs font-semibold text-ice">MongoDB ↔ ChromaDB Sync</p>
-                <p className="text-[11px] text-[rgba(180,200,220,0.35)] mt-0.5">
+                <p className="text-xs font-semibold text-[#052838]">MongoDB ↔ ChromaDB Sync</p>
+                <p className="text-[11px] text-[#8aaab8] mt-0.5">
                   Diagnostic — find and fix embedding status mismatches
                 </p>
               </div>
               <svg
-                className={cn('w-4 h-4 text-[rgba(180,200,220,0.3)] transition-transform shrink-0', syncOpen ? 'rotate-180' : '')}
+                className={cn('w-4 h-4 text-[#8aaab8] transition-transform shrink-0', syncOpen ? 'rotate-180' : '')}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -569,7 +569,7 @@ export default function AdminPage() {
             </button>
 
             {syncOpen && (
-              <div className="px-5 pb-5 space-y-4 border-t border-[rgba(212,234,247,0.06)]">
+              <div className="px-5 pb-5 space-y-4 border-t border-[#c8dde6]">
                 <div className="flex gap-3 pt-4">
                   <Button onClick={() => syncCheckMutation.mutate()} loading={syncCheckMutation.isPending} variant="secondary" size="md">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -588,34 +588,34 @@ export default function AdminPage() {
                 </div>
 
                 {syncResult && (
-                  <div className="bg-white/[0.02] border border-[rgba(212,234,247,0.07)] rounded-[10px] p-4 space-y-3">
+                  <div className="bg-[#e8f2f6] border border-[#c8dde6] rounded-[10px] p-4 space-y-3">
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <p className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase mb-1">Total Pending</p>
-                        <p className="font-mono text-xl text-ice">{syncResult.total_pending}</p>
+                        <p className="text-[10px] font-sans text-[#8aaab8] uppercase mb-1">Total Pending</p>
+                        <p className="font-sans text-xl text-[#052838]">{syncResult.total_pending}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase mb-1">Truly Pending</p>
-                        <p className="font-mono text-xl text-sky">{syncResult.truly_pending}</p>
-                        <p className="text-[10px] text-[rgba(180,200,220,0.3)] mt-0.5">Not in ChromaDB</p>
+                        <p className="text-[10px] font-sans text-[#8aaab8] uppercase mb-1">Truly Pending</p>
+                        <p className="font-sans text-xl text-sky">{syncResult.truly_pending}</p>
+                        <p className="text-[10px] text-[#8aaab8] mt-0.5">Not in ChromaDB</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase mb-1">Mismatch</p>
-                        <p className={cn('font-mono text-xl', syncResult.already_in_chroma > 0 ? 'text-amber-400' : 'text-teal')}>
+                        <p className="text-[10px] font-sans text-[#8aaab8] uppercase mb-1">Mismatch</p>
+                        <p className={cn('font-sans text-xl', syncResult.already_in_chroma > 0 ? 'text-amber-400' : 'text-teal')}>
                           {syncResult.already_in_chroma}
                         </p>
-                        <p className="text-[10px] text-[rgba(180,200,220,0.3)] mt-0.5">In Chroma, not updated</p>
+                        <p className="text-[10px] text-[#8aaab8] mt-0.5">In Chroma, not updated</p>
                       </div>
                     </div>
                     {syncResult.fixed !== undefined && (
                       <div className="bg-teal/5 border border-teal/15 rounded-[8px] px-3 py-2">
-                        <p className="text-xs font-mono text-teal">{syncResult.message}</p>
+                        <p className="text-xs font-sans text-teal">{syncResult.message}</p>
                       </div>
                     )}
                     {(syncResult.already_in_chroma_ids?.length ?? 0) > 0 && syncResult.fixed === undefined && (
                       <div className="flex flex-wrap gap-1.5">
                         {syncResult.already_in_chroma_ids.map((id) => (
-                          <span key={id} className="text-[10px] font-mono bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-[4px] border border-amber-500/20">
+                          <span key={id} className="text-[10px] font-sans bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-[4px] border border-amber-500/20">
                             {id}
                           </span>
                         ))}
@@ -663,17 +663,17 @@ export default function AdminPage() {
               {/* Day selector + KPIs */}
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs font-semibold text-ice">Agent Metrics</p>
+                  <p className="text-xs font-semibold text-[#052838]">Agent Metrics</p>
                   <div className="flex gap-1">
                     {[1, 7, 30].map((d) => (
                       <button
                         key={d}
                         onClick={() => setStatsDays(d)}
                         className={cn(
-                          'text-[10px] font-mono px-2.5 py-1 rounded-[6px] border transition-colors',
+                          'text-[10px] font-sans px-2.5 py-1 rounded-[6px] border transition-colors',
                           statsDays === d
                             ? 'bg-sky/15 border-sky/25 text-sky'
-                            : 'border-[rgba(212,234,247,0.07)] text-[rgba(180,200,220,0.35)] hover:text-sky'
+                            : 'border-[#c8dde6] text-[#8aaab8] hover:text-sky'
                         )}
                       >
                         {d === 1 ? '24h' : `${d}d`}
@@ -685,7 +685,7 @@ export default function AdminPage() {
                 {statsLoading ? (
                   <div className="grid grid-cols-2 gap-2">
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="animate-pulse h-16 bg-white/[0.03] rounded-[8px]" />
+                      <div key={i} className="animate-pulse h-16 bg-[#e8f2f6] rounded-[8px]" />
                     ))}
                   </div>
                 ) : agentStats?.overall && agentStats.overall.total_calls > 0 ? (
@@ -693,7 +693,7 @@ export default function AdminPage() {
                     {[
                       {
                         label: 'Total Calls', val: String(agentStats.overall.total_calls),
-                        cls: 'text-ice',
+                        cls: 'text-[#052838]',
                       },
                       {
                         label: 'Avg Latency',
@@ -708,19 +708,19 @@ export default function AdminPage() {
                       {
                         label: 'Tokens (total)',
                         val: `${((agentStats.overall.total_input_tokens + agentStats.overall.total_output_tokens) / 1000).toFixed(1)}k`,
-                        cls: 'text-ice',
+                        cls: 'text-[#052838]',
                         sub: `${(agentStats.overall.total_input_tokens / 1000).toFixed(1)}k in · ${(agentStats.overall.total_output_tokens / 1000).toFixed(1)}k out`,
                       },
                     ].map((s) => (
-                      <div key={s.label} className="bg-white/[0.025] rounded-[8px] px-3 py-3">
-                        <p className="text-[10px] font-mono text-[rgba(180,200,220,0.3)] uppercase tracking-wider mb-1">{s.label}</p>
+                      <div key={s.label} className="bg-[#f0f6f8] rounded-[8px] px-3 py-3">
+                        <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider mb-1">{s.label}</p>
                         <p className={cn('text-lg font-semibold', s.cls)}>{s.val}</p>
-                        {s.sub && <p className="text-[10px] font-mono text-[rgba(180,200,220,0.25)] mt-0.5">{s.sub}</p>}
+                        {s.sub && <p className="text-[10px] font-sans text-[#8aaab8] mt-0.5">{s.sub}</p>}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-[rgba(180,200,220,0.25)] text-center py-4">
+                  <p className="text-xs text-[#8aaab8] text-center py-4">
                     No agent calls in {statsDays === 1 ? 'the last 24 hours' : `the last ${statsDays} days`}.
                   </p>
                 )}
@@ -729,32 +729,32 @@ export default function AdminPage() {
               {/* Per-agent table */}
               {agentStats?.by_agent && agentStats.by_agent.length > 0 && (
                 <Card className="overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[rgba(212,234,247,0.06)]">
-                    <p className="text-[10px] font-mono text-[rgba(180,200,220,0.35)] uppercase tracking-wider">By Agent</p>
+                  <div className="px-4 py-3 border-b border-[#c8dde6]">
+                    <p className="text-[10px] font-sans text-[#8aaab8] uppercase tracking-wider">By Agent</p>
                   </div>
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-[rgba(212,234,247,0.05)]">
+                      <tr className="border-b border-[#c8dde6]">
                         {['Agent', 'Calls', 'Avg', 'Max', 'Tokens', 'Err'].map((h) => (
-                          <th key={h} className="px-3 py-2 text-left font-mono text-[10px] text-[rgba(180,200,220,0.25)] uppercase">{h}</th>
+                          <th key={h} className="px-3 py-2 text-left font-sans text-[10px] text-[#8aaab8] uppercase">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {agentStats.by_agent.map((row, i) => (
-                        <tr key={i} className="border-b border-[rgba(212,234,247,0.04)] last:border-0 hover:bg-white/[0.01]">
+                        <tr key={i} className="border-b border-[#c8dde6] last:border-0 hover:bg-[#e8f2f6]">
                           <td className="px-3 py-2.5">
-                            <span className="font-mono text-[11px] bg-white/[0.04] text-ice px-2 py-0.5 rounded-[4px]">{row.agent}</span>
+                            <span className="font-sans text-[11px] bg-[#e8f2f6] text-[#052838] px-2 py-0.5 rounded-[4px]">{row.agent}</span>
                           </td>
-                          <td className="px-3 py-2.5 font-mono text-ice">{row.call_count}</td>
-                          <td className="px-3 py-2.5 font-mono text-sky">{fmtLatency(row.avg_latency_ms)}</td>
-                          <td className={cn('px-3 py-2.5 font-mono', row.max_latency_ms > 10000 ? 'text-amber-400' : 'text-[rgba(180,200,220,0.4)]')}>
+                          <td className="px-3 py-2.5 font-sans text-[#052838]">{row.call_count}</td>
+                          <td className="px-3 py-2.5 font-sans text-sky">{fmtLatency(row.avg_latency_ms)}</td>
+                          <td className={cn('px-3 py-2.5 font-sans', row.max_latency_ms > 10000 ? 'text-amber-400' : 'text-[#5a8898]')}>
                             {fmtLatency(row.max_latency_ms)}
                           </td>
-                          <td className="px-3 py-2.5 font-mono text-[rgba(180,200,220,0.4)]">
+                          <td className="px-3 py-2.5 font-sans text-[#5a8898]">
                             {(row.total_input_tokens / 1000).toFixed(1)}k / {(row.total_output_tokens / 1000).toFixed(1)}k
                           </td>
-                          <td className="px-3 py-2.5 font-mono">
+                          <td className="px-3 py-2.5 font-sans">
                             <span className={row.error_count > 0 ? 'text-red-400' : 'text-teal'}>{row.error_count}</span>
                           </td>
                         </tr>
@@ -767,7 +767,7 @@ export default function AdminPage() {
               {/* Raw logs toggle */}
               <button
                 onClick={() => setShowLogs((v) => !v)}
-                className="flex items-center gap-1.5 text-[11px] font-mono text-[rgba(180,200,220,0.35)] hover:text-sky transition-colors w-full px-1"
+                className="flex items-center gap-1.5 text-[11px] font-sans text-[#8aaab8] hover:text-sky transition-colors w-full px-1"
               >
                 <svg className={cn('w-3 h-3 transition-transform', showLogs ? 'rotate-90' : '')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -778,44 +778,44 @@ export default function AdminPage() {
               {showLogs && (
                 <Card className="overflow-hidden">
                   {logsLoading ? (
-                    <p className="p-4 text-xs text-center text-[rgba(180,200,220,0.25)]">Loading…</p>
+                    <p className="p-4 text-xs text-center text-[#8aaab8]">Loading…</p>
                   ) : agentLogsData && agentLogsData.length > 0 ? (
                     <div className="max-h-64 overflow-y-auto">
                       <table className="w-full text-xs">
-                        <thead className="sticky top-0 bg-[#0d1017]">
-                          <tr className="border-b border-[rgba(212,234,247,0.06)]">
+                        <thead className="sticky top-0 bg-white">
+                          <tr className="border-b border-[#c8dde6]">
                             {['Time', 'Agent', 'Role', 'Latency', 'Tok', 'Conf', 'Status'].map((h) => (
-                              <th key={h} className="px-3 py-2 text-left font-mono text-[10px] text-[rgba(180,200,220,0.25)] uppercase">{h}</th>
+                              <th key={h} className="px-3 py-2 text-left font-sans text-[10px] text-[#8aaab8] uppercase">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {agentLogsData.map((log, i) => (
-                            <tr key={i} className="border-b border-[rgba(212,234,247,0.03)] last:border-0 hover:bg-white/[0.01]">
-                              <td className="px-3 py-2 font-mono text-[rgba(180,200,220,0.35)] whitespace-nowrap">
+                            <tr key={i} className="border-b border-[#c8dde6] last:border-0 hover:bg-[#e8f2f6]">
+                              <td className="px-3 py-2 font-sans text-[#8aaab8] whitespace-nowrap">
                                 {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                               </td>
                               <td className="px-3 py-2">
-                                <span className={cn('font-mono text-[10px] px-1.5 py-0.5 rounded-[4px]', log.fallback ? 'bg-amber-500/10 text-amber-400' : 'bg-white/[0.04] text-ice')}>
+                                <span className={cn('font-sans text-[10px] px-1.5 py-0.5 rounded-[4px]', log.fallback ? 'bg-amber-500/10 text-amber-400' : 'bg-[#e8f2f6] text-[#052838]')}>
                                   {log.agent}
                                 </span>
                               </td>
-                              <td className="px-3 py-2 font-mono text-[rgba(180,200,220,0.4)] capitalize">{log.staff_role}</td>
-                              <td className={cn('px-3 py-2 font-mono', log.latency_ms > 8000 ? 'text-amber-400' : 'text-sky')}>
+                              <td className="px-3 py-2 font-sans text-[#5a8898] capitalize">{log.staff_role}</td>
+                              <td className={cn('px-3 py-2 font-sans', log.latency_ms > 8000 ? 'text-amber-400' : 'text-sky')}>
                                 {fmtLatency(log.latency_ms)}
                               </td>
-                              <td className="px-3 py-2 font-mono text-[rgba(180,200,220,0.35)]">
+                              <td className="px-3 py-2 font-sans text-[#8aaab8]">
                                 {log.input_tokens + log.output_tokens > 0 ? log.input_tokens + log.output_tokens : '—'}
                               </td>
-                              <td className={cn('px-3 py-2 font-mono', (log.supervisor_confidence ?? 1) < 0.7 ? 'text-amber-400' : 'text-[rgba(180,200,220,0.35)]')}>
+                              <td className={cn('px-3 py-2 font-sans', (log.supervisor_confidence ?? 1) < 0.7 ? 'text-amber-400' : 'text-[#8aaab8]')}>
                                 {log.supervisor_confidence != null ? `${(log.supervisor_confidence * 100).toFixed(0)}%` : '—'}
                               </td>
                               <td className="px-3 py-2">
                                 {log.error
-                                  ? <span className="font-mono text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded-[4px]">error</span>
+                                  ? <span className="font-sans text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded-[4px]">error</span>
                                   : log.fallback
-                                  ? <span className="font-mono text-[10px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-[4px]">fallback</span>
-                                  : <span className="font-mono text-[10px] bg-teal/10 text-teal px-1.5 py-0.5 rounded-[4px]">ok</span>
+                                  ? <span className="font-sans text-[10px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-[4px]">fallback</span>
+                                  : <span className="font-sans text-[10px] bg-teal/10 text-teal px-1.5 py-0.5 rounded-[4px]">ok</span>
                                 }
                               </td>
                             </tr>
@@ -824,7 +824,7 @@ export default function AdminPage() {
                       </table>
                     </div>
                   ) : (
-                    <p className="p-4 text-xs text-center text-[rgba(180,200,220,0.25)]">No logs found.</p>
+                    <p className="p-4 text-xs text-center text-[#8aaab8]">No logs found.</p>
                   )}
                 </Card>
               )}
@@ -838,24 +838,24 @@ export default function AdminPage() {
       {tab === 'audit' && (
         <div className="space-y-4">
           <Card className="overflow-hidden">
-            <div className="px-4 py-3 border-b border-[rgba(212,234,247,0.06)] flex items-center justify-between">
-              <p className="text-xs font-semibold text-ice">Audit Log</p>
-              <span className="text-[10px] font-mono text-[rgba(180,200,220,0.3)]">Last 100 entries · newest first</span>
+            <div className="px-4 py-3 border-b border-[#c8dde6] flex items-center justify-between">
+              <p className="text-xs font-semibold text-[#052838]">Audit Log</p>
+              <span className="text-[10px] font-sans text-[#8aaab8]">Last 100 entries · newest first</span>
             </div>
 
             {auditLoading ? (
               <div className="p-4 space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="animate-pulse h-10 bg-white/[0.03] rounded-[8px]" />
+                  <div key={i} className="animate-pulse h-10 bg-[#e8f2f6] rounded-[8px]" />
                 ))}
               </div>
             ) : auditLogsData && auditLogsData.length > 0 ? (
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="w-full text-xs min-w-[700px]">
-                  <thead className="sticky top-0 bg-[#0d1017]">
-                    <tr className="border-b border-[rgba(212,234,247,0.06)]">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="border-b border-[#c8dde6]">
                       {['Timestamp', 'Actor', 'Role', 'Action', 'Resource', 'Details'].map((h) => (
-                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[10px] text-[rgba(180,200,220,0.25)] uppercase tracking-wider">{h}</th>
+                        <th key={h} className="px-3 py-2.5 text-left font-sans text-[10px] text-[#8aaab8] uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -868,25 +868,25 @@ export default function AdminPage() {
                         isCreate ? 'text-teal bg-teal/8 border-teal/20' : 'text-sky bg-sky/8 border-sky/20'
                       const ts = log.timestamp ? new Date(String(log.timestamp)) : null
                       return (
-                        <tr key={i} className="border-b border-[rgba(212,234,247,0.03)] last:border-0 hover:bg-white/[0.01]">
-                          <td className="px-3 py-2.5 font-mono text-[rgba(180,200,220,0.35)] whitespace-nowrap">
+                        <tr key={i} className="border-b border-[#c8dde6] last:border-0 hover:bg-[#e8f2f6]">
+                          <td className="px-3 py-2.5 font-sans text-[#8aaab8] whitespace-nowrap">
                             {ts ? ts.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                           </td>
                           <td className="px-3 py-2.5">
-                            <p className="font-medium text-ice">{String(log.actor_name || '—')}</p>
-                            <p className="font-mono text-[9px] text-[rgba(180,200,220,0.3)]">{String(log.actor_id || '')}</p>
+                            <p className="font-medium text-[#052838]">{String(log.actor_name || '—')}</p>
+                            <p className="font-sans text-[9px] text-[#8aaab8]">{String(log.actor_id || '')}</p>
                           </td>
-                          <td className="px-3 py-2.5 font-mono capitalize text-[rgba(180,200,220,0.5)]">{String(log.actor_role || '—')}</td>
+                          <td className="px-3 py-2.5 font-sans capitalize text-[#5a8898]">{String(log.actor_role || '—')}</td>
                           <td className="px-3 py-2.5">
-                            <span className={cn('font-mono text-[10px] px-1.5 py-0.5 rounded-[4px] border', actionColor)}>
+                            <span className={cn('font-sans text-[10px] px-1.5 py-0.5 rounded-[4px] border', actionColor)}>
                               {action.replace(/_/g, ' ')}
                             </span>
                           </td>
                           <td className="px-3 py-2.5">
-                            <p className="font-mono text-[10px] text-[rgba(180,200,220,0.4)] capitalize">{String(log.resource_type || '—')}</p>
-                            <p className="font-mono text-[9px] text-[rgba(180,200,220,0.25)]">{String(log.resource_id || '')}</p>
+                            <p className="font-sans text-[10px] text-[#5a8898] capitalize">{String(log.resource_type || '—')}</p>
+                            <p className="font-sans text-[9px] text-[#8aaab8]">{String(log.resource_id || '')}</p>
                           </td>
-                          <td className="px-3 py-2.5 font-mono text-[10px] text-[rgba(180,200,220,0.35)] max-w-[200px]">
+                          <td className="px-3 py-2.5 font-sans text-[10px] text-[#8aaab8] max-w-[200px]">
                             {log.details && typeof log.details === 'object'
                               ? Object.entries(log.details as Record<string, unknown>)
                                   .filter(([, v]) => v != null)
@@ -902,7 +902,7 @@ export default function AdminPage() {
                 </table>
               </div>
             ) : (
-              <p className="p-8 text-center text-[rgba(180,200,220,0.25)] text-sm">No audit log entries found.</p>
+              <p className="p-8 text-center text-[#8aaab8] text-sm">No audit log entries found.</p>
             )}
           </Card>
         </div>

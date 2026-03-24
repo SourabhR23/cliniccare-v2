@@ -53,7 +53,7 @@ from backend.rag.chunking.visit_chunker import VisitChunker
 from backend.rag.embedding.openai_embedder import OpenAIEmbedder
 from backend.rag.retrieval.chroma_client import ChromaVisitCollection
 from backend.rag.retrieval.hybrid_retriever import HybridRetriever
-from backend.rag.retrieval.reranker import CrossEncoderReranker
+from backend.rag.retrieval.reranker import CohereReranker
 
 logger = structlog.get_logger(__name__)
 
@@ -110,7 +110,7 @@ class RAGService:
         self._embedder = OpenAIEmbedder()
         self._chroma = ChromaVisitCollection()
         self._hybrid = HybridRetriever(db)
-        self._reranker = CrossEncoderReranker()
+        self._reranker = CohereReranker()
         self._openai = AsyncOpenAI(
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url

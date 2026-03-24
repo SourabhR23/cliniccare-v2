@@ -206,7 +206,7 @@ async def build_graph(db: AsyncIOMotorDatabase, redis_client=None):
     graph.add_edge("format_answer", END)
 
     graph.add_conditional_edges("extract_appointment_details",
-        lambda s: "abort" if s.get("intent") == "abort" else "continue",
+        lambda s: "abort" if s.get("intent") in ("abort", "slot_selection") else "continue",
         {"abort": END, "continue": "check_slot_availability"})
     graph.add_conditional_edges("check_slot_availability", route_after_availability,
         {"confirm_booking": "confirm_booking", "__end__": END})
