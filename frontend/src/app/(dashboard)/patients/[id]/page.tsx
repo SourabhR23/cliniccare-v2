@@ -417,7 +417,7 @@ function EditVisitModal({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<EditPatientForm>({
+  } = useForm({
     resolver: zodResolver(
       z.object({
         visit_type: z.string().min(1, 'Visit type is required'),
@@ -447,7 +447,7 @@ function EditVisitModal({
       followup_required: visit.followup_required,
       followup_date: visit.followup_date ? String(visit.followup_date) : '',
     },
-  } as Parameters<typeof useForm>[0])
+  })
 
   const mutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => updateVisit(patientId, visit.id, data),
@@ -462,7 +462,8 @@ function EditVisitModal({
     },
   })
 
-  const onSubmit = (data: Record<string, unknown>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onSubmit = (data: any) => {
     const payload = { ...data }
     if (!payload.bp) delete payload.bp
     if (!payload.notes) delete payload.notes
@@ -471,12 +472,12 @@ function EditVisitModal({
 
   return (
     <Modal open={open} onClose={onClose} title={`Edit Visit — ${formatDate(visit.visit_date)}`} size="xl">
-      <form onSubmit={handleSubmit(onSubmit as Parameters<typeof handleSubmit>[0])} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Select
             label="Visit Type"
             options={visitTypeOptions}
-            error={(errors as Record<string, { message?: string }>).visit_type?.message}
+            error={(errors as Record<string, { message?: string } | undefined>).visit_type?.message}
             {...register('visit_type')}
           />
           <Input

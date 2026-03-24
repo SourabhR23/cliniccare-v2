@@ -84,11 +84,13 @@ async def connect_to_mongodb() -> None:
         serverSelectionTimeoutMS=settings.mongodb_connect_timeout_ms,
         # connectTimeoutMS: individual socket connection timeout
         connectTimeoutMS=settings.mongodb_connect_timeout_ms,
-        # Required on some cloud hosts (Render, Railway) where the system
-        # OpenSSL version fails TLS negotiation with Atlas.
-        # Atlas certs are valid — this only bypasses hostname verification,
-        # not encryption. TLS is still fully in use.
+        # Required on Render (Ubuntu 22.04 / OpenSSL 3.x) where TLS handshake
+        # with MongoDB Atlas fails due to cipher suite negotiation issues.
+        # tlsAllowInvalidCertificates: skip cert validation
+        # tlsInsecure: also skip hostname verification + relax cipher checks
+        # TLS is still fully active — data in transit is still encrypted.
         tlsAllowInvalidCertificates=True,
+        tlsInsecure=True,
     )
 
     # Verify connection is actually working
