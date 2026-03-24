@@ -26,6 +26,8 @@ RECEPTIONIST — Use for FRONT-DESK / ADMINISTRATIVE tasks only:
   - Displaying administrative patient data: phone, email, address, assigned doctor, allergies list
   - "Check in Ajay Varma" / "Find patient by name" / "Register new patient"
   - "What is this patient's phone/email/address?"
+  - CONFIRMING patient registration: "Yes, register [name]" / "yes register them" / "yes please register"
+    → ANY message that starts with "Yes, register" or "yes, register" is ALWAYS RECEPTIONIST.
   NOTE: This agent is for ADMINISTRATIVE lookups — NOT clinical history.
 
 RAG_AGENT — Use for CLINICAL / MEDICAL questions about a patient:
@@ -38,8 +40,11 @@ RAG_AGENT — Use for CLINICAL / MEDICAL questions about a patient:
 
 SCHEDULING — Use for:
   - Booking a NEW follow-up or appointment
-  - Rescheduling or cancelling an existing appointment
+  - Rescheduling, changing, moving an existing appointment to a new date
   - "Book appointment for [patient] on [date]"
+  - "Reschedule [patient]'s appointment" / "Change appointment to [date]"
+  - "Move the appointment" / "Can we shift the date?" / "I want another date"
+  - "My appointment is on X, I want to change it to Y"
 
 NOTIFICATION — Use ONLY when EXPLICITLY asked to SEND an email or message:
   - "Send email to the patient"

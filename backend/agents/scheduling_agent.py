@@ -80,9 +80,11 @@ Extract:
 3. followup_reason: Reason/purpose if mentioned. If not mentioned → null
 4. patient_name_in_message: Patient name mentioned in the message (e.g. "Ajay Varma", "patient SR"). If none → null
 5. doctor_name_in_message: Doctor name mentioned in the message (e.g. "Dr. Rohan", "doctor rohan", "Dr Mehta"). If none → null
+6. is_reschedule: true if message indicates reschedule/change/move/shift an existing appointment. false otherwise.
+7. old_appointment_date: Only if is_reschedule=true and an existing/old date is mentioned. ISO format. null otherwise.
 
 Respond ONLY with valid JSON:
-{{"appointment_date": "2026-03-25", "appointment_slot": null, "followup_reason": null, "patient_name_in_message": "Ajay Varma", "doctor_name_in_message": "Dr. Rohan"}}"""
+{{"appointment_date": "2026-03-25", "appointment_slot": null, "followup_reason": null, "patient_name_in_message": "Ajay Varma", "doctor_name_in_message": "Dr. Rohan", "is_reschedule": false, "old_appointment_date": null}}"""
 
 
 async def extract_appointment_details(state: AgentState, db) -> dict:
@@ -125,12 +127,18 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
     )
     try:
         response = await _llm.ainvoke([SystemMessage(content=prompt)])
-        parsed = json.loads(response.content.strip())
+        raw = response.content.strip()
+        # Strip markdown fences if LLM wraps JSON in ```
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
+        parsed = json.loads(raw)
         appointment_date = parsed.get("appointment_date")
         appointment_slot = parsed.get("appointment_slot")
         followup_reason = parsed.get("followup_reason")
         patient_name_in_msg = parsed.get("patient_name_in_message")
         doctor_name_in_msg = parsed.get("doctor_name_in_message")
+        is_reschedule = bool(parsed.get("is_reschedule", False))
+        old_appointment_date = parsed.get("old_appointment_date")
     except Exception as e:
         logger.warning("scheduling_extract_parse_error", error=str(e))
         appointment_date = None
@@ -138,6 +146,8 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         followup_reason = None
         patient_name_in_msg = None
         doctor_name_in_msg = None
+        is_reschedule = False
+        old_appointment_date = None
 
     # ── Step 2: Resolve patient from DB if not in state ──────
     patient_id = state.get("patient_id")
@@ -150,13 +160,12 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
     if not patient_id:
         lookup_name = patient_name_in_msg or patient_name
         if not lookup_name:
-            # No patient info at all — ask
+            action = "reschedule" if is_reschedule else "book"
             return {
                 "messages": [AIMessage(
                     content=(
-                        "To book an appointment I need the patient's name. "
-                        "Please provide the patient name, for example: "
-                        "'Book appointment for Ajay Varma on 25 March 2026'."
+                        f"Sure, I'd be happy to help {action} an appointment! "
+                        "Could I get the patient's name so I can look them up?"
                     )
                 )],
                 "intent": "abort",
@@ -217,15 +226,81 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         logger.info("scheduling_patient_resolved",
                     patient_id=patient_id, patient_name=patient_name)
 
-    # ── Step 3: Require appointment date ────────────────────
+    # ── Step 3: Handle reschedule — find existing appointment ──
+    if is_reschedule:
+        # Look up existing appointment in DB
+        query: dict = {"patient_id": patient_id, "status": {"$ne": "cancelled"}}
+        if old_appointment_date:
+            query["appointment_date"] = old_appointment_date
+        existing_appt = await db["appointments"].find_one(
+            query, sort=[("appointment_date", -1)]
+        )
+        if existing_appt and appointment_date:
+            # Update appointment with new date (and clear slot so picker shows again)
+            await db["appointments"].update_one(
+                {"_id": existing_appt["_id"]},
+                {"$set": {
+                    "appointment_date": appointment_date,
+                    "appointment_slot": appointment_slot or existing_appt.get("appointment_slot"),
+                    "status": "scheduled",
+                }}
+            )
+            logger.info("appointment_rescheduled",
+                        appt_id=existing_appt["_id"],
+                        old_date=existing_appt.get("appointment_date"),
+                        new_date=appointment_date)
+            import json as _json
+            ui_payload = _json.dumps({
+                "type": "booking_confirm",
+                "appointment_id": existing_appt["_id"],
+                "patient_name": patient_name,
+                "doctor_name": assigned_doctor_name or existing_appt.get("doctor_name", ""),
+                "appointment_date": appointment_date,
+                "appointment_slot": appointment_slot or existing_appt.get("appointment_slot", ""),
+                "reason": followup_reason or existing_appt.get("followup_reason") or "Follow-up",
+                "patient_email": patient_email or "",
+                "email_sent": False,
+            })
+            return {
+                "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
+                "intent": "dormant",
+            }
+        elif existing_appt and not appointment_date:
+            old_date = existing_appt.get("appointment_date", "their current date")
+            return {
+                "messages": [AIMessage(
+                    content=(
+                        f"Got it — **{patient_name}** currently has an appointment on **{old_date}**. "
+                        "What date would you like to move it to?"
+                    )
+                )],
+                "patient_id": patient_id,
+                "patient_name": patient_name,
+                "patient_email": patient_email,
+                "assigned_doctor_id": assigned_doctor_id,
+                "assigned_doctor_name": assigned_doctor_name,
+                "intent": "abort",
+            }
+        elif not existing_appt:
+            return {
+                "messages": [AIMessage(
+                    content=(
+                        f"I couldn't find an existing appointment for **{patient_name}** to reschedule. "
+                        "Would you like to book a new one instead?"
+                    )
+                )],
+                "intent": "abort",
+            }
+
+    # ── Step 4: Require appointment date ────────────────────
     if not appointment_date:
+        doc_part = f" with {assigned_doctor_name}" if assigned_doctor_name else ""
         return {
             "messages": [AIMessage(
                 content=(
-                    f"I found **{patient_name}**"
-                    + (f" (assigned to {assigned_doctor_name})" if assigned_doctor_name else "")
-                    + ". What date would you like to book the appointment? "
-                    "For example: 'on 25 March' or 'next Monday'."
+                    f"Found them — **{patient_name}**{doc_part}. "
+                    "What date works best for the appointment? "
+                    "You can say something like 'on 25 March' or 'next Monday'."
                 )
             )],
             "patient_id": patient_id,
@@ -325,18 +400,20 @@ async def check_slot_availability(state: AgentState, db) -> dict:
             return {
                 "messages": [AIMessage(
                     content=(
-                        f"{doctor_name} is fully booked on {appointment_date} "
-                        f"({MAX_PATIENTS_PER_DAY}/{MAX_PATIENTS_PER_DAY} slots taken). "
-                        f"Next available day is {next_day}. "
-                        f"Available slots: {slots_preview}. "
-                        f"Would you like to book on {next_day}?"
+                        f"Looks like {doctor_name} is fully booked on {appointment_date} — "
+                        f"all {MAX_PATIENTS_PER_DAY} slots are taken. "
+                        f"The next available day is **{next_day}**, with slots at {slots_preview}. "
+                        f"Shall I go ahead and book on {next_day}?"
                     )
                 )],
                 "intent": "slot_conflict",
             }
         return {
             "messages": [AIMessage(
-                content=f"{doctor_name} has no availability in the next 14 days. Please contact the clinic admin."
+                content=(
+                    f"Unfortunately {doctor_name} has no availability in the next 14 days. "
+                    "You may want to check with the clinic admin to arrange something."
+                )
             )],
             "intent": "slot_conflict",
         }
@@ -349,8 +426,10 @@ async def check_slot_availability(state: AgentState, db) -> dict:
         if not appointment_slot:
             return {
                 "messages": [AIMessage(
-                    content=f"No slots available on {appointment_date} for {doctor_name}. "
-                            f"Clinic hours are 9:00 AM – 5:00 PM with {MAX_PATIENTS_PER_DAY} slots per day."
+                    content=(
+                        f"Sorry, there are no available slots on {appointment_date} for {doctor_name}. "
+                        "Clinic hours are 9:00 AM – 5:00 PM. Would you like to try a different date?"
+                    )
                 )],
                 "intent": "slot_conflict",
             }
@@ -360,7 +439,7 @@ async def check_slot_availability(state: AgentState, db) -> dict:
             "appointment_slot": appointment_slot,
             "intent": "proceed",
             "messages": [AIMessage(
-                content=f"Auto-assigned slot {appointment_slot} on {appointment_date} for {doctor_name}."
+                content=f"I've gone ahead and assigned the **{appointment_slot}** slot on {appointment_date} for {doctor_name}."
             )],
         }
 
@@ -370,8 +449,9 @@ async def check_slot_availability(state: AgentState, db) -> dict:
         return {
             "messages": [AIMessage(
                 content=(
-                    f"'{appointment_slot}' is outside clinic hours (9:00 AM – 5:00 PM). "
-                    f"Available slots on {appointment_date}: {slots_preview}."
+                    f"Hmm, **{appointment_slot}** is outside our clinic hours (9:00 AM – 5:00 PM). "
+                    f"Here are the available slots on {appointment_date}: {slots_preview}. "
+                    "Which one works?"
                 )
             )],
             "intent": "slot_conflict",
@@ -379,27 +459,22 @@ async def check_slot_availability(state: AgentState, db) -> dict:
 
     # ── Check specific slot is free ───────────────────────────
     if appointment_slot in booked_slots:
-        alt_slots = ", ".join(available_slots[:4]) if available_slots else "none"
+        alt_slots = ", ".join(available_slots[:4]) if available_slots else "none available"
         return {
             "messages": [AIMessage(
                 content=(
-                    f"Slot {appointment_slot} on {appointment_date} is already taken. "
-                    f"Other available slots: {alt_slots}. "
-                    f"Which slot would you prefer?"
+                    f"Oh, **{appointment_slot}** on {appointment_date} is already taken. "
+                    f"Other open slots that day: {alt_slots}. Which one would you prefer?"
                 )
             )],
             "intent": "slot_conflict",
         }
 
-    remaining = MAX_PATIENTS_PER_DAY - len(booked_slots) - 1
     logger.info("scheduling_slot_available",
-                slot=appointment_slot, date=appointment_date, remaining=remaining)
+                slot=appointment_slot, date=appointment_date)
     return {
         "intent": "proceed",
-        "messages": [AIMessage(
-            content=f"Slot confirmed: {appointment_slot} on {appointment_date}. "
-                    f"{remaining} slot{'s' if remaining != 1 else ''} remaining for {doctor_name} that day."
-        )],
+        "messages": [AIMessage(content="")],
     }
 
 
@@ -460,13 +535,16 @@ async def send_reminder(state: AgentState) -> dict:
         result = await send_email({**reminder_state, **composed})
         email_sent = result.get("email_sent", False)
     patient_name = state.get("patient_name") or "patient"
-    patient_email = state.get("patient_email") or "no email on file"
+    patient_email = state.get("patient_email") or ""
     return {
         "reminder_sent": True,
         "email_sent": email_sent,
         "messages": [AIMessage(
-            content=f"Appointment booked for {patient_name} on {state.get('appointment_date')}. "
-                    + (f"Reminder sent to {patient_email}." if email_sent else "No email on file — reminder not sent.")
+            content=(
+                f"All set! Appointment booked for **{patient_name}** on {state.get('appointment_date')}. "
+                + (f"A confirmation email has been sent to {patient_email}." if email_sent
+                   else "We don't have an email on file for this patient, so no confirmation was sent.")
+            )
         )],
     }
 
@@ -567,6 +645,8 @@ async def notify_doctor_of_decline(state: AgentState, db) -> dict:
         except Exception as e:
             logger.error("doctor_notification_failed", error=str(e))
     return {
-        "messages": [AIMessage(content="Appointment scheduling closed. Doctor notified.")],
+        "messages": [AIMessage(
+            content="Understood — appointment has been marked as declined and the doctor has been notified."
+        )],
         "confirmation_status": "declined",
     }
