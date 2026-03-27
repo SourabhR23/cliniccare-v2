@@ -198,6 +198,8 @@ def create_patient_tools(db: AsyncIOMotorDatabase):
             return {
                 "patient_id": patient.id,
                 "name": patient.personal.name,
+                "assigned_doctor_id": assigned_doctor_id,
+                "assigned_doctor_name": doctor_doc["name"],
                 "message": "Patient registered successfully",
             }
 

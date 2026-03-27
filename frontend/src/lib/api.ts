@@ -136,6 +136,12 @@ export const listAppointments = (month?: string) =>
 export const cancelAppointment = (id: string) =>
   api.patch(`/appointments/${id}/cancel`)
 
+export const deleteAppointment = (id: string) =>
+  api.delete(`/appointments/${id}`)
+
+export const notifyAppointment = (id: string) =>
+  api.post(`/appointments/${id}/notify`)
+
 // Health
 export const getHealth = () =>
   axios.get(`${BASE_URL}/health`)

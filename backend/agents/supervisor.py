@@ -96,6 +96,12 @@ _RECEPTIONIST_PATTERNS = [
     r"^no,?\s+search\s+again",     # "No, search again"
     r"^check\s+in\s+",             # "Check in Riya Shah"
     r"^find\s+patient",            # "Find patient ..."
+    r"^__register__:",             # Form submission from registration flashcard
+]
+
+_SCHEDULING_PATTERNS = [
+    r"^yes,?\s+book",              # "Yes, book" — after registration success message
+    r"^yes,?\s+book\s+on",        # "Yes, book on 30 March"
 ]
 
 def _keyword_route(message: str) -> str | None:
@@ -104,7 +110,32 @@ def _keyword_route(message: str) -> str | None:
     for pattern in _RECEPTIONIST_PATTERNS:
         if _re.match(pattern, lower):
             return "RECEPTIONIST"
+    for pattern in _SCHEDULING_PATTERNS:
+        if _re.match(pattern, lower):
+            return "SCHEDULING"
     return None
+
+
+_CORRECTION_PATTERNS = [
+    r"^actually[,\s]",
+    r"^wait[,.\s]",
+    r"^no[,\s]+i\s+meant",
+    r"^sorry[,\s]+(i\s+meant|wrong)",
+    r"^change\s+that\s+to\b",
+    r"^not\s+that[,.\s]",
+    r"^i\s+said\s+the\s+wrong\b",
+    r"^wrong\s+(date|time|doctor|patient|slot)\b",
+    r"^my\s+mistake\b",
+]
+
+
+def _is_correction(message: str) -> bool:
+    """True if the message looks like a correction to the previous agent response."""
+    lower = message.lower().strip()
+    for pattern in _CORRECTION_PATTERNS:
+        if _re.match(pattern, lower):
+            return True
+    return False
 
 
 async def supervisor_node(state: AgentState) -> dict:
@@ -116,8 +147,10 @@ async def supervisor_node(state: AgentState) -> dict:
     # ── Keyword pre-check (code-level, never wrong) ──────────
     keyword_agent = _keyword_route(last_message)
     if keyword_agent:
+        lower_msg = last_message.lower()
         intent_map = {
-            "RECEPTIONIST": "register_patient" if "register" in last_message.lower() else "search_patient",
+            "RECEPTIONIST": "register_patient" if "register" in lower_msg else "search_patient",
+            "SCHEDULING":   "book_appointment",
         }
         logger.info("supervisor_keyword_routed", agent=keyword_agent, message_preview=last_message[:40])
         return {
@@ -126,9 +159,22 @@ async def supervisor_node(state: AgentState) -> dict:
             "confidence": 1.0,
         }
 
-    # Build recent conversation context (last 4 messages, excluding the current one)
-    # so the supervisor can resolve short follow-ups like "for next month?"
-    recent_msgs = state["messages"][:-1][-4:]
+    # ── Correction detection — route back to the last active agent ──────
+    last_agent = state.get("current_agent", "UNKNOWN")
+    if last_agent in ("SCHEDULING", "RECEPTIONIST", "CALENDAR", "RAG_AGENT") \
+            and _is_correction(last_message):
+        logger.info("supervisor_correction_detected",
+                    rerouted_to=last_agent,
+                    message_preview=last_message[:60])
+        return {
+            "current_agent": last_agent,
+            "intent": "correction",
+            "confidence": 1.0,
+        }
+
+    # Build recent conversation context (last 8 messages, excluding the current one)
+    # so the supervisor can resolve short follow-ups and corrections with full context
+    recent_msgs = state["messages"][:-1][-8:]
     context_lines = []
     for m in recent_msgs:
         role = "User" if isinstance(m, HumanMessage) else "Assistant"

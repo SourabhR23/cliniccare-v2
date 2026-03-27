@@ -80,16 +80,6 @@ class PatientService:
         No visits created here — visits go in `visits` collection.
         If first_visit is provided, we call save_visit() after.
         """
-        # Check duplicate phone
-        existing = await self.patients.find_one(
-            {"personal.phone": data.personal.phone}
-        )
-        if existing:
-            raise ValueError(
-                f"Patient with phone {data.personal.phone} already exists. "
-                "Search for them instead."
-            )
-
         patient_id = _gen_patient_id()
 
         patient_doc = {

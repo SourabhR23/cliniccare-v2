@@ -146,7 +146,7 @@ async def build_graph(db: AsyncIOMotorDatabase, redis_client=None):
     graph.add_node("fetch_patient_record", _wrap(fetch_patient_record,   tools=patient_tools))
     graph.add_node("collect_info",         _wrap(collect_info,           tools=patient_tools))
     graph.add_node("validate_info",        _wrap(validate_info,          tools=patient_tools))
-    graph.add_node("register_patient",     _wrap(register_patient,       tools=patient_tools))
+    graph.add_node("register_patient",     _wrap(register_patient,       tools=patient_tools, db=db))
 
     # RAG
     graph.add_node("think_and_act", _wrap(think_and_act, tools=rag_tools))
@@ -188,6 +188,8 @@ async def build_graph(db: AsyncIOMotorDatabase, redis_client=None):
     graph.add_conditional_edges("identify_patient", route_after_identify, {
         "fetch_patient_record": "fetch_patient_record",
         "collect_info":         "collect_info",
+        "validate_info":        "validate_info",
+        "__end__":              END,
     })
     graph.add_edge("fetch_patient_record", END)
     graph.add_edge("collect_info", "validate_info")

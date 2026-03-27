@@ -74,6 +74,7 @@ class AgentState(TypedDict):
     confirmation_status: Optional[str] # confirmed | declined | unclear | timeout
     reminder_sent: bool                # Idempotency guard
     scheduling_retry_count: int        # Max 3 reschedule attempts
+    booking_done: Optional[bool]       # True after a booking is confirmed in this session
 
     # ── Notification context ─────────────────────────────────
     email_type: Optional[str]          # reminder | confirmation | cancellation | alert

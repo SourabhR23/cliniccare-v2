@@ -151,6 +151,98 @@ async def cancel_appointment(
     return {"id": appointment_id, "status": "cancelled"}
 
 
+@router.delete("/{appointment_id}", response_model=dict)
+async def delete_appointment(
+    appointment_id: str,
+    current_user: TokenData = Depends(require_any_staff),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Hard-delete an appointment from the database."""
+    from fastapi import HTTPException, status as http_status
+    result = await db["appointments"].delete_one({"_id": appointment_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND,
+                            detail=f"Appointment {appointment_id} not found")
+    return {"id": appointment_id, "deleted": True}
+
+
+@router.post("/{appointment_id}/notify", response_model=dict)
+async def notify_appointment(
+    appointment_id: str,
+    current_user: TokenData = Depends(require_any_staff),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Send a notification/reminder email to the patient for an appointment."""
+    import aiosmtplib
+    from email.mime.text import MIMEText
+    from fastapi import HTTPException, status as http_status
+    from backend.core.config import get_settings
+
+    cfg = get_settings()
+
+    appt = await db["appointments"].find_one({"_id": appointment_id})
+    if not appt:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND,
+                            detail=f"Appointment {appointment_id} not found")
+
+    # Resolve patient email if not stored on appointment
+    patient_email = appt.get("patient_email")
+    if not patient_email and appt.get("patient_id"):
+        patient_doc = await db["patients"].find_one(
+            {"_id": appt["patient_id"]}, {"personal.email": 1}
+        )
+        if patient_doc:
+            email_val = patient_doc.get("personal", {}).get("email")
+            patient_email = str(email_val) if email_val else None
+
+    if not patient_email:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No email address on file for this patient.",
+        )
+
+    patient_name = appt.get("patient_name", "Patient")
+    doctor_name = appt.get("doctor_name", "your doctor")
+    appt_date = appt.get("appointment_date", "")
+    appt_slot = appt.get("appointment_slot", "")
+    reason = appt.get("followup_reason") or "General Consultation"
+
+    body = (
+        f"Dear {patient_name},\n\n"
+        f"This is a reminder of your upcoming appointment:\n\n"
+        f"  Date:   {appt_date}\n"
+        f"  Time:   {appt_slot}\n"
+        f"  Doctor: {doctor_name}\n"
+        f"  Reason: {reason}\n\n"
+        f"Please arrive 10 minutes early. If you need to reschedule, "
+        f"contact the clinic as soon as possible.\n\n"
+        f"Thank you,\nClinicCare Team"
+    )
+
+    msg = MIMEText(body, "plain")
+    msg["Subject"] = f"Appointment Reminder — {appt_date} at {appt_slot}"
+    msg["From"] = cfg.smtp_from_email
+    msg["To"] = patient_email
+
+    try:
+        use_implicit_tls = cfg.smtp_port == 465
+        async with aiosmtplib.SMTP(
+            hostname=cfg.smtp_host,
+            port=cfg.smtp_port,
+            use_tls=use_implicit_tls,
+            start_tls=not use_implicit_tls,
+        ) as smtp:
+            await smtp.login(cfg.smtp_username, cfg.smtp_password)
+            await smtp.send_message(msg)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_502_BAD_GATEWAY,
+            detail=f"Email delivery failed: {exc}",
+        )
+
+    return {"id": appointment_id, "notified": True, "email": patient_email}
+
+
 CLINIC_SLOTS = [
     "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
     "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM",

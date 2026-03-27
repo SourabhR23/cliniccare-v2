@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/store/auth'
-import { listPatients, agentChat, getQueue, getHealth, getAgentStats, listAdminUsers, listAppointments } from '@/lib/api'
+import { listPatients, agentChat, getQueue, getHealth, getAgentStats, listAdminUsers, listAppointments, deleteAppointment, notifyAppointment } from '@/lib/api'
 import { formatDate, cn } from '@/lib/utils'
 import { PatientListItem, AgentChatResponse, EmbedQueueStatus, HealthStatus, AgentStatsResponse, StaffUser } from '@/types'
 import { Card, StatCard } from '@/components/ui/Card'
@@ -704,6 +705,64 @@ function ReceptionistDashboard({
   isLoading: boolean
 }) {
   const router = useRouter()
+  const [actionLoading, setActionLoading] = useState<Record<string, 'notify' | 'delete' | null>>({})
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
+
+  // Next-week date range
+  const today = new Date()
+  const nextWeekStart = new Date(today)
+  nextWeekStart.setDate(today.getDate() + 1)
+  const nextWeekEnd = new Date(today)
+  nextWeekEnd.setDate(today.getDate() + 7)
+  const nextWeekMonthStr = `${nextWeekStart.getFullYear()}-${String(nextWeekStart.getMonth() + 1).padStart(2, '0')}`
+  const startStr = nextWeekStart.toISOString().split('T')[0]
+  const endStr = nextWeekEnd.toISOString().split('T')[0]
+
+  const { data: allAppointments = [], refetch: refetchAppts } = useQuery({
+    queryKey: ['appointments', nextWeekMonthStr],
+    queryFn: () => listAppointments(nextWeekMonthStr).then(r => r.data as { id: string; type: string; date: string; slot?: string; patient_name: string; patient_id: string; doctor_name: string; status: string; reason: string }[]),
+  })
+
+  const nextWeekAppts = allAppointments.filter(
+    (a) => a.type === 'appointment' && a.status !== 'cancelled' && a.date >= startStr && a.date <= endStr && !removedIds.has(a.id)
+  )
+
+  async function handleNotify(id: string) {
+    setActionLoading((p) => ({ ...p, [id]: 'notify' }))
+    try {
+      await notifyAppointment(id)
+      toast.success('Notification email sent to patient')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      toast.error(e?.response?.data?.detail || 'Failed to send notification')
+    } finally {
+      setActionLoading((p) => ({ ...p, [id]: null }))
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setActionLoading((p) => ({ ...p, [id]: 'delete' }))
+    try {
+      await deleteAppointment(id)
+      setRemovedIds((prev) => new Set([...prev, id]))
+      toast.success('Appointment deleted')
+      refetchAppts()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      toast.error(e?.response?.data?.detail || 'Failed to delete appointment')
+    } finally {
+      setActionLoading((p) => ({ ...p, [id]: null }))
+    }
+  }
+
+  const followupsToday = isLoading
+    ? 0
+    : patients.filter((p) => {
+        if (!p.pending_followup_date) return false
+        const d = new Date(p.pending_followup_date)
+        const n = new Date()
+        return d.toDateString() === n.toDateString()
+      }).length
 
   return (
     <div className="space-y-6">
@@ -714,10 +773,7 @@ function ReceptionistDashboard({
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card
-          onClick={() => router.push('/patients')}
-          className={cn('p-5 cursor-pointer')}
-        >
+        <Card onClick={() => router.push('/patients')} className={cn('p-5 cursor-pointer')}>
           <div className="w-10 h-10 rounded-xl bg-sky/10 border border-sky/15 flex items-center justify-center mb-4">
             <svg className="w-5 h-5 text-sky" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -727,10 +783,7 @@ function ReceptionistDashboard({
           <p className="text-xs text-[#5a8898]">Find and manage patient records</p>
         </Card>
 
-        <Card
-          onClick={() => router.push('/patients')}
-          className="p-5 cursor-pointer"
-        >
+        <Card onClick={() => router.push('/patients')} className="p-5 cursor-pointer">
           <div className="w-10 h-10 rounded-xl bg-teal/10 border border-teal/15 flex items-center justify-center mb-4">
             <svg className="w-5 h-5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -740,10 +793,7 @@ function ReceptionistDashboard({
           <p className="text-xs text-[#5a8898]">Add a new patient to the system</p>
         </Card>
 
-        <Card
-          onClick={() => router.push('/agent')}
-          className="p-5 cursor-pointer"
-        >
+        <Card onClick={() => router.push('/agent')} className="p-5 cursor-pointer">
           <div className="w-10 h-10 rounded-xl bg-[rgba(56,189,248,0.08)] border border-sky/15 flex items-center justify-center mb-4">
             <svg className="w-5 h-5 text-sky" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -757,20 +807,102 @@ function ReceptionistDashboard({
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
         <StatCard label="Total Patients" value={isLoading ? '...' : patients.length} accent />
-        <StatCard
-          label="Follow-ups Today"
-          value={
-            isLoading
-              ? '...'
-              : patients.filter((p) => {
-                  if (!p.pending_followup_date) return false
-                  const d = new Date(p.pending_followup_date)
-                  const n = new Date()
-                  return d.toDateString() === n.toDateString()
-                }).length
-          }
-        />
+        <StatCard label="Follow-ups Today" value={followupsToday} />
       </div>
+
+      {/* Next week appointments */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#c8dde6] flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-[#052838]">Next 7 Days — Appointments</h3>
+            <p className="text-[11px] text-[#8aaab8] mt-0.5 font-sans">
+              {startStr} → {endStr}
+            </p>
+          </div>
+          <Badge variant="info">{nextWeekAppts.length}</Badge>
+        </div>
+
+        {nextWeekAppts.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm text-[#8aaab8]">No appointments scheduled for the next 7 days</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#c8dde6]">
+                  {['Date', 'Time', 'Patient', 'Doctor', 'Reason', ''].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-[10px] font-sans text-[#8aaab8] uppercase tracking-widest whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {nextWeekAppts.map((appt) => {
+                  const isActing = !!actionLoading[appt.id]
+                  const dateLabel = (() => {
+                    try {
+                      return new Date(appt.date + 'T00:00:00').toLocaleDateString('en-IN', {
+                        weekday: 'short', day: 'numeric', month: 'short',
+                      })
+                    } catch { return appt.date }
+                  })()
+                  return (
+                    <tr key={appt.id} className="border-b border-[#c8dde6] last:border-0 hover:bg-[#f8fbfc] transition-colors">
+                      <td className="px-4 py-3 text-xs text-[#052838] font-medium whitespace-nowrap">{dateLabel}</td>
+                      <td className="px-4 py-3 text-xs text-[#5a8898] font-sans whitespace-nowrap">{appt.slot || '—'}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-[#052838]">{appt.patient_name}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-[#5a8898] whitespace-nowrap">{appt.doctor_name || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-[#8aaab8] max-w-[140px] truncate">{appt.reason || 'General'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <button
+                            onClick={() => handleNotify(appt.id)}
+                            disabled={isActing}
+                            title="Send notification email"
+                            className={cn(
+                              'flex items-center gap-1 text-[10px] font-sans px-2.5 py-1.5 rounded-[7px] border transition-all',
+                              isActing && actionLoading[appt.id] === 'notify'
+                                ? 'bg-[#0a8878]/10 border-[#0a8878]/20 text-[#0a8878] cursor-wait'
+                                : 'bg-[#e8f2f6] border-[#c8dde6] text-[#5a8898] hover:bg-[#0a8878]/10 hover:border-[#0a8878]/30 hover:text-[#0a8878]',
+                              isActing && actionLoading[appt.id] !== 'notify' && 'opacity-50 cursor-not-allowed'
+                            )}
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            {isActing && actionLoading[appt.id] === 'notify' ? 'Sending…' : 'Notify'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(appt.id)}
+                            disabled={isActing}
+                            title="Delete appointment"
+                            className={cn(
+                              'flex items-center gap-1 text-[10px] font-sans px-2.5 py-1.5 rounded-[7px] border transition-all',
+                              isActing && actionLoading[appt.id] === 'delete'
+                                ? 'bg-red-500/10 border-red-500/20 text-red-400 cursor-wait'
+                                : 'bg-[#e8f2f6] border-[#c8dde6] text-[#5a8898] hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400',
+                              isActing && actionLoading[appt.id] !== 'delete' && 'opacity-50 cursor-not-allowed'
+                            )}
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            {isActing && actionLoading[appt.id] === 'delete' ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

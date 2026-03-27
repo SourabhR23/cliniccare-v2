@@ -130,6 +130,7 @@ export interface AgentUISlotPicker {
   appointment_date: string
   slots: string[]
   reason: string
+  registration_success?: boolean
 }
 
 export interface AgentUIBookingConfirm {
@@ -149,7 +150,22 @@ export interface AgentUIRegisterPrompt {
   patient_name: string
 }
 
-export type AgentUIData = AgentUISlotPicker | AgentUIBookingConfirm | AgentUIRegisterPrompt
+export interface AgentUIRegistrationForm {
+  type: 'registration_form'
+  patient_name: string
+  message?: string
+  doctors: Array<{ id: string; name: string; specialization?: string | null }>
+}
+
+export interface AgentUIDoctorPicker {
+  type: 'doctor_picker'
+  patient_name: string
+  patient_id: string
+  appointment_date?: string
+  doctors: Array<{ id: string; name: string; specialization?: string | null }>
+}
+
+export type AgentUIData = AgentUISlotPicker | AgentUIBookingConfirm | AgentUIRegisterPrompt | AgentUIRegistrationForm | AgentUIDoctorPicker
 
 export interface AgentThread {
   thread_id: string

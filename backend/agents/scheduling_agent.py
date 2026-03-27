@@ -70,6 +70,7 @@ EXTRACT_DETAILS_PROMPT = """Extract appointment scheduling details from the staf
 
 Staff message: "{message}"
 Patient name already known: {patient_name}
+Previous assistant question: {previous_question}
 Today's date: {today}
 
 Extract:
@@ -78,7 +79,11 @@ Extract:
    "next week" → next monday from today. If no date mentioned → null
 2. appointment_slot: Time slot if mentioned (e.g. "10:30 AM", "2pm", "morning", "09:00 AM"). If not mentioned → null
 3. followup_reason: Reason/purpose if mentioned. If not mentioned → null
-4. patient_name_in_message: Patient name mentioned in the message (e.g. "Ajay Varma", "patient SR"). If none → null
+4. patient_name_in_message: Patient name mentioned in the message.
+   IMPORTANT: If "previous_assistant_question" asked for the patient's name AND the current message looks like a
+   name (e.g. "Akshay Kumar", "Patient name: Riya Shah", "The patient is John Doe"), extract that as the name.
+   Examples: "Ajay Varma" → "Ajay Varma", "Patient name: Riya" → "Riya", "It's Akshay Kumar" → "Akshay Kumar".
+   If none → null
 5. doctor_name_in_message: Doctor name mentioned in the message (e.g. "Dr. Rohan", "doctor rohan", "Dr Mehta"). If none → null
 6. is_reschedule: true if message indicates reschedule/change/move/shift an existing appointment. false otherwise.
 7. old_appointment_date: Only if is_reschedule=true and an existing/old date is mentioned. ISO format. null otherwise.
@@ -96,33 +101,40 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
     import json, re
     from datetime import date
 
-    last_message = ""
-    for msg in reversed(state.get("messages", [])):
-        if isinstance(msg, HumanMessage):
-            last_message = msg.content
-            break
-
-    # Fast-path: everything already in state from a prior turn
-    if state.get("appointment_date") and state.get("patient_id"):
-        logger.info("scheduling_started",
-                    patient_id=state.get("patient_id"),
-                    appointment_date=state.get("appointment_date"))
-        return {
-            "messages": [AIMessage(
-                content=f"Scheduling appointment for {state.get('patient_name', 'patient')} "
-                        f"on {state['appointment_date']}"
-                        + (f" at {state['appointment_slot']}" if state.get('appointment_slot') else "")
-                        + "."
-            )],
+    # ── Reset stale scheduling fields when starting a new booking cycle ──
+    # Prevents a previous booking's slot/date from leaking into the new request.
+    is_new_booking_cycle = bool(state.get("booking_done"))
+    if is_new_booking_cycle:
+        state = {
+            **state,
+            "booking_done": False,
+            "appointment_date": None,
+            "appointment_slot": None,
+            "followup_reason": None,
+            "confirmation_status": None,
             "scheduling_retry_count": 0,
             "reminder_sent": False,
             "email_sent": False,
         }
+        logger.info("scheduling_new_booking_cycle",
+                    thread_id=state.get("thread_id"),
+                    patient_name=state.get("patient_name"))
+
+    last_message = ""
+    previous_question = ""
+    messages = state.get("messages", [])
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage) and not last_message:
+            last_message = msg.content
+        elif isinstance(msg, AIMessage) and last_message and not previous_question:
+            previous_question = msg.content[:200]
+            break
 
     # ── Step 1: Extract details from message ─────────────────
     prompt = EXTRACT_DETAILS_PROMPT.format(
         message=last_message,
         patient_name=state.get("patient_name") or "not known yet",
+        previous_question=previous_question or "none",
         today=date.today().isoformat(),
     )
     try:
@@ -132,8 +144,10 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         if raw.startswith("```"):
             raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
         parsed = json.loads(raw)
-        appointment_date = parsed.get("appointment_date")
-        appointment_slot = parsed.get("appointment_slot")
+        # Fall back to state values when message doesn't mention them explicitly
+        # This handles "Yes, book" after registration (uses remembered appointment_date)
+        appointment_date = parsed.get("appointment_date") or state.get("appointment_date")
+        appointment_slot = parsed.get("appointment_slot") or state.get("appointment_slot")
         followup_reason = parsed.get("followup_reason")
         patient_name_in_msg = parsed.get("patient_name_in_message")
         doctor_name_in_msg = parsed.get("doctor_name_in_message")
@@ -141,8 +155,13 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         old_appointment_date = parsed.get("old_appointment_date")
     except Exception as e:
         logger.warning("scheduling_extract_parse_error", error=str(e))
-        appointment_date = None
-        appointment_slot = None
+        appointment_date = state.get("appointment_date")
+        appointment_slot = state.get("appointment_slot")
+        followup_reason = None
+        patient_name_in_msg = None
+        doctor_name_in_msg = None
+        is_reschedule = False
+        old_appointment_date = None
         followup_reason = None
         patient_name_in_msg = None
         doctor_name_in_msg = None
@@ -185,13 +204,33 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
 
         if not patient_doc:
             import json as _json
+            # Fetch doctors for the registration form
+            doctors = []
+            try:
+                cursor = db["users"].find(
+                    {"role": "doctor", "is_active": True},
+                    {"_id": 1, "name": 1, "specialization": 1}
+                )
+                doctor_docs = await cursor.to_list(length=50)
+                doctors = [{"id": d["_id"], "name": d["name"], "specialization": d.get("specialization")} for d in doctor_docs]
+            except Exception:
+                pass
+
             ui_payload = _json.dumps({
-                "type": "register_prompt",
+                "type": "registration_form",
                 "patient_name": lookup_name,
+                "message": (
+                    f"I searched for **{lookup_name}** but couldn't find a match in our records. "
+                    f"Please register them as a new patient and we'll book the appointment right after."
+                ),
+                "doctors": doctors,
             })
+            # Save the intended appointment date so it's offered after registration
             return {
                 "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
                 "intent": "abort",
+                "appointment_date": appointment_date,  # Preserved for post-registration booking
+                "appointment_slot": appointment_slot,
             }
 
         patient_id = patient_doc["_id"]
@@ -225,6 +264,21 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
 
         logger.info("scheduling_patient_resolved",
                     patient_id=patient_id, patient_name=patient_name)
+
+    # ── Step 2b: Override doctor if explicitly named in message ──
+    # Handles "Book with Dr. X" when patient is already in state (e.g., from DoctorPicker)
+    if patient_id and doctor_name_in_msg:
+        doc_by_name = await db["users"].find_one(
+            {
+                "name": {"$regex": re.escape(doctor_name_in_msg), "$options": "i"},
+                "role": "doctor",
+            },
+            {"_id": 1, "name": 1},
+        )
+        if doc_by_name:
+            assigned_doctor_id = doc_by_name["_id"]
+            assigned_doctor_name = doc_by_name["name"]
+            logger.info("scheduling_doctor_overridden_by_name", doctor=assigned_doctor_name)
 
     # ── Step 3: Handle reschedule — find existing appointment ──
     if is_reschedule:
@@ -292,13 +346,12 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
                 "intent": "abort",
             }
 
-    # ── Step 4: Require appointment date ────────────────────
+    # ── Step 4: Require appointment date ─────────────────────
     if not appointment_date:
-        doc_part = f" with {assigned_doctor_name}" if assigned_doctor_name else ""
         return {
             "messages": [AIMessage(
                 content=(
-                    f"Found them — **{patient_name}**{doc_part}. "
+                    f"Found them — **{patient_name}**. "
                     "What date works best for the appointment? "
                     "You can say something like 'on 25 March' or 'next Monday'."
                 )
@@ -312,7 +365,43 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
             "intent": "abort",
         }
 
-    # ── Step 4: Show slot picker if no slot selected yet ────
+    # ── Step 4a: Show doctor picker if no doctor was explicitly chosen ──
+    # Show whenever no doctor is named in the current message and no slot yet.
+    # The DoctorPicker and SlotPicker UIs both generate messages that include
+    # the doctor name explicitly, so this step only fires once per booking attempt.
+    if not doctor_name_in_msg and not appointment_slot:
+        import json as _json
+        doctors = []
+        try:
+            cursor = db["users"].find(
+                {"role": "doctor", "is_active": True},
+                {"_id": 1, "name": 1, "specialization": 1}
+            )
+            doctor_docs = await cursor.to_list(length=50)
+            doctors = [{"id": d["_id"], "name": d["name"], "specialization": d.get("specialization")} for d in doctor_docs]
+        except Exception:
+            pass
+        ui_payload = _json.dumps({
+            "type": "doctor_picker",
+            "patient_name": patient_name,
+            "patient_id": str(patient_id),
+            "appointment_date": appointment_date,
+            "doctors": doctors,
+        })
+        logger.info("scheduling_showing_doctor_picker", patient_id=patient_id)
+        return {
+            "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
+            "patient_id": patient_id,
+            "patient_name": patient_name,
+            "patient_email": patient_email,
+            "assigned_doctor_id": assigned_doctor_id,
+            "assigned_doctor_name": assigned_doctor_name,
+            "appointment_date": appointment_date,
+            "followup_reason": followup_reason,
+            "intent": "abort",
+        }
+
+    # ── Step 4b: Show slot picker if no slot selected yet ────
     if not appointment_slot:
         # Fetch available slots from DB for this doctor + date
         booked = await _get_booked_slots(db, assigned_doctor_id or "", appointment_date) if assigned_doctor_id else []
@@ -362,8 +451,7 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
 
     return {
         "messages": [AIMessage(
-            content=f"Scheduling appointment for {patient_name} "
-                    f"on {appointment_date}"
+            content=f"Got it — scheduling **{patient_name}** on **{appointment_date}**"
                     + (f" at {appointment_slot}" if appointment_slot else "")
                     + "."
         )],
@@ -378,6 +466,8 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         "scheduling_retry_count": 0,
         "reminder_sent": False,
         "email_sent": False,
+        "booking_done": False,
+        "intent": "continue",  # Clear any stale slot_selection/abort from previous turn
     }
 
 
@@ -522,6 +612,7 @@ async def confirm_booking(state: AgentState, db) -> dict:
     return {
         "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
         "intent": "dormant",
+        "booking_done": True,
     }
 
 
@@ -536,14 +627,21 @@ async def send_reminder(state: AgentState) -> dict:
         email_sent = result.get("email_sent", False)
     patient_name = state.get("patient_name") or "patient"
     patient_email = state.get("patient_email") or ""
+    email_note = (
+        f"A confirmation email has been sent to {patient_email}."
+        if email_sent
+        else "No email on file — confirmation not sent."
+    )
     return {
         "reminder_sent": True,
         "email_sent": email_sent,
         "messages": [AIMessage(
             content=(
-                f"All set! Appointment booked for **{patient_name}** on {state.get('appointment_date')}. "
-                + (f"A confirmation email has been sent to {patient_email}." if email_sent
-                   else "We don't have an email on file for this patient, so no confirmation was sent.")
+                f"All set! **{patient_name}** is booked for "
+                f"**{state.get('appointment_date')}** at **{state.get('appointment_slot')}** "
+                f"with {state.get('assigned_doctor_name') or 'the doctor'}. "
+                f"{email_note}\n\n"
+                f"Is there anything else — another appointment or a different patient?"
             )
         )],
     }
