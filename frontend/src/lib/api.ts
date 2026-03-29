@@ -145,3 +145,7 @@ export const notifyAppointment = (id: string) =>
 // Health
 export const getHealth = () =>
   axios.get(`${BASE_URL}/health`)
+
+// Patient chatbot (public — no auth token needed)
+export const patientChatApi = (message: string, session_id?: string | null) =>
+  axios.post(`${BASE_URL}/api/patient/chat`, { message, session_id: session_id ?? undefined })

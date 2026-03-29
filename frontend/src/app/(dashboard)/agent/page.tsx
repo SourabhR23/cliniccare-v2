@@ -27,6 +27,7 @@ const agentMeta: Record<string, { label: string; variant: 'success' | 'default' 
   NotificationAgent: { label: 'NOTIFICATION', variant: 'warning' },
   CalendarAgent:     { label: 'CALENDAR',     variant: 'muted'   },
   supervisor:        { label: 'SYSTEM',       variant: 'muted'   },
+  SESSION_END:       { label: 'SESSION END',  variant: 'muted'   },
   PATIENT_LOOKUP:    { label: 'PATIENT LOOKUP', variant: 'info'  },
   REGISTRATION:      { label: 'REGISTRATION', variant: 'info'    },
   SLOT_FINDER:       { label: 'SLOT FINDER',  variant: 'warning' },
@@ -219,9 +220,9 @@ function BookingCard({ data }: { data: AgentUIBookingConfirm }) {
   return (
     <div className="space-y-3">
       {/* Success header */}
-      <div className="flex items-center gap-2 pb-2 border-b border-[#c8dde6]">
-        <div className="w-5 h-5 rounded-full bg-[#0a8878]/15 flex items-center justify-center">
-          <svg className="w-3 h-3 text-[#0a8878]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <div className="flex items-center gap-2 pb-2 border-b border-[#0a8878]/20">
+        <div className="w-6 h-6 rounded-full bg-[#0a8878]/15 flex items-center justify-center">
+          <svg className="w-3.5 h-3.5 text-[#0a8878]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -230,11 +231,11 @@ function BookingCard({ data }: { data: AgentUIBookingConfirm }) {
       </div>
 
       {/* Details grid */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {rows.map(({ label, value }) => (
           <div key={label} className="flex justify-between items-start gap-4">
             <span className="text-[10px] text-[#8aaab8] uppercase tracking-wide font-medium flex-shrink-0 w-14">{label}</span>
-            <span className="text-xs text-[#052838] text-right">{value}</span>
+            <span className="text-xs text-[#052838] text-right font-medium">{value}</span>
           </div>
         ))}
       </div>
@@ -244,13 +245,26 @@ function BookingCard({ data }: { data: AgentUIBookingConfirm }) {
         'flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-[6px]',
         data.email_sent
           ? 'bg-[#0a8878]/8 text-[#0a8878]'
+          : data.email_pending
+          ? 'bg-amber-50 text-amber-600'
           : 'bg-[#e8f2f6] text-[#8aaab8]'
       )}>
         <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        {data.email_sent ? 'Confirmation email sent to patient' : 'No email on file — email not sent'}
+        {data.email_sent
+          ? 'Confirmation email sent to patient'
+          : data.email_pending
+          ? 'Sending confirmation email to patient...'
+          : 'No email on file — email not sent'}
       </div>
+
+      {/* Follow-up question */}
+      {data.follow_up && (
+        <div className="pt-1 border-t border-[#0a8878]/15">
+          <p className="text-xs text-[#5a8898] leading-relaxed">{data.follow_up}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -771,6 +785,7 @@ export default function AgentPage() {
   const [loadingHint, setLoadingHint] = useState<string | undefined>(undefined)
   const [currentAgent, setCurrentAgent] = useState<string>('ReceptionistAgent')
   const [bookingDone, setBookingDone] = useState(false)
+  const [sessionEnded, setSessionEnded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -808,6 +823,10 @@ export default function AgentPage() {
       const parsed = parseAgentUI(data.response)
       if (parsed?.uiData?.type === 'booking_confirm') {
         setBookingDone(true)
+      }
+      if (data.session_done) {
+        setSessionEnded(true)
+        setBookingDone(false)
       }
       setMessages((prev) => [
         ...prev,
@@ -853,6 +872,7 @@ export default function AgentPage() {
     setThreadId(undefined)
     setCurrentAgent('ReceptionistAgent')
     setBookingDone(false)
+    setSessionEnded(false)
     setMessages([
       {
         role: 'assistant',
@@ -923,15 +943,38 @@ export default function AgentPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Booking-done session banner */}
-        {bookingDone && (
+        {/* Session-ended banner (after staff says "no") */}
+        {sessionEnded && (
+          <div className="mx-4 mb-2 mt-1 rounded-[10px] bg-[#052838]/5 border border-[#052838]/15 px-3.5 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-6 h-6 rounded-full bg-[#052838]/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-[#052838]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-[#052838] font-semibold">Session complete</p>
+                <p className="text-[10px] text-[#5a8898] truncate">Click New Chat to start a new conversation</p>
+              </div>
+            </div>
+            <button
+              onClick={startNewConversation}
+              className="text-[10px] font-sans text-white bg-[#0a8878] hover:bg-[#0a8878]/90 px-3 py-1.5 rounded-[7px] flex-shrink-0 transition-colors font-medium"
+            >
+              New Chat
+            </button>
+          </div>
+        )}
+
+        {/* Booking-done session banner (before staff responds) */}
+        {bookingDone && !sessionEnded && (
           <div className="mx-4 mb-2 mt-1 rounded-[10px] bg-[#0a8878]/8 border border-[#0a8878]/20 px-3.5 py-2.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <svg className="w-3.5 h-3.5 text-[#0a8878] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               <p className="text-[10px] text-[#0a8878] font-medium truncate">
-                Booking confirmed · Start a new chat to book another appointment
+                Booking confirmed · Reply or click New Chat for another appointment
               </p>
             </div>
             <button
@@ -951,7 +994,7 @@ export default function AgentPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={bookingDone ? 'Ask about this booking, or start a new chat for another appointment…' : 'Type a message... (Enter to send, Shift+Enter for new line)'}
+              placeholder={sessionEnded ? 'Session ended — click New Chat to start a new conversation' : bookingDone ? 'Ask about this booking, or start a new chat for another appointment…' : 'Type a message... (Enter to send, Shift+Enter for new line)'}
               rows={1}
               className="flex-1 bg-white text-[#052838] placeholder-[#8aaab8] border border-[#c8dde6] rounded-[10px] px-3.5 py-2.5 text-sm font-sans resize-none focus:outline-none focus:border-[#0a8878]/50 focus:ring-1 focus:ring-[#0a8878]/20 transition-all max-h-32 overflow-y-auto"
               style={{ minHeight: '42px' }}

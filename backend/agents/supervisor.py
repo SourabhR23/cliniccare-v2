@@ -15,77 +15,40 @@ settings = get_settings()
 
 _llm = make_chat_llm(temperature=0)
 
-SUPERVISOR_SYSTEM_PROMPT = """You are a clinic management supervisor routing staff requests to the correct AI assistant.
+SUPERVISOR_SYSTEM_PROMPT = """Route clinic staff messages to the correct agent. Output JSON only, no other text.
 
-You will receive the LAST FEW MESSAGES for context. Classify the LATEST user message into exactly one agent.
+RECEPTIONIST — patient check-in, name/phone search, new patient registration, admin info (phone/email/address/allergies)
+RAG_AGENT    — medical history, diagnoses, medications, drug interactions, clinical summaries, pre-visit briefs
+SCHEDULING   — book new appointment, reschedule/change/move an existing appointment
+NOTIFICATION — only when staff explicitly says send/email/notify a patient
+CALENDAR     — view/count/query existing schedule, follow-ups, appointments by date; cancel a scheduled event
+UNKNOWN      — nothing matches
 
-RECEPTIONIST — Use for FRONT-DESK / ADMINISTRATIVE tasks only:
-  - Checking in a patient (new or returning)
-  - Searching for a patient by name or phone number
-  - Registering a new patient
-  - Displaying administrative patient data: phone, email, address, assigned doctor, allergies list
-  - "Check in Ajay Varma" / "Find patient by name" / "Register new patient"
-  - "What is this patient's phone/email/address?"
-  - CONFIRMING patient registration: "Yes, register [name]" / "yes register them" / "yes please register"
-    → ANY message that starts with "Yes, register" or "yes, register" is ALWAYS RECEPTIONIST.
-  NOTE: This agent is for ADMINISTRATIVE lookups — NOT clinical history.
+Rules:
+- "tell me about [patient]" → RAG_AGENT (clinical), not RECEPTIONIST (admin)
+- "patient's phone/address" → RECEPTIONIST (admin lookup)
+- Short follow-up like "for next month?" after a schedule result → CALENDAR
+- SCHEDULING = creating/changing a booking; CALENDAR = reading/counting existing bookings
+- confidence: 0.0–1.0
 
-RAG_AGENT — Use for CLINICAL / MEDICAL questions about a patient:
-  - Any question about a patient's medical history, visits, diagnoses, treatments
-  - "What medications has this patient been on?"
-  - "What was the diagnosis at the last visit?"
-  - "Any drug interactions for this patient?"
-  - "Tell me about [patient name]" / "Patient summary for [name]"
-  - Pre-visit briefings or clinical overviews
-
-SCHEDULING — Use for:
-  - Booking a NEW follow-up or appointment
-  - Rescheduling, changing, moving an existing appointment to a new date
-  - "Book appointment for [patient] on [date]"
-  - "Reschedule [patient]'s appointment" / "Change appointment to [date]"
-  - "Move the appointment" / "Can we shift the date?" / "I want another date"
-  - "My appointment is on X, I want to change it to Y"
-
-NOTIFICATION — Use ONLY when EXPLICITLY asked to SEND an email or message:
-  - "Send email to the patient"
-  - "Send notification / reminder to the patient"
-  - Message must contain an explicit send/email/notify ACTION
-
-CALENDAR — Use for ANY of these:
-  - Querying existing schedule, appointments, or follow-ups
-  - "Are there any follow-ups today / this week / next week / next month?"
-  - "What appointments do we have?"
-  - "Show me the schedule for 25 March"
-  - "Who has follow-ups pending?"
-  - "How many bookings / appointments are there?"
-  - "How many patients booked?" / "How many new patients booked?"
-  - "Any bookings for [date/period]?"
-  - Count or summary of existing appointments
-  - Cancelling or deleting a scheduled event
-  - ANY question about EXISTING bookings, scheduled dates, or future schedule
-  - SHORT follow-up time references like "for next month?", "next week?", "in future", "this week?"
-    when the conversation is already about appointments/schedule
-
-UNKNOWN — Use when the request TRULY doesn't fit any category above.
-
-CRITICAL DISTINCTIONS:
-  SCHEDULING vs CALENDAR:
-    SCHEDULING = creating/changing a NEW booking
-    CALENDAR   = reading/querying/counting EXISTING bookings
-
-  SHORT FOLLOW-UPS: If the last assistant message was about a schedule/calendar result,
-    and the user says something like "for next month?", "what about next week?", "in future" —
-    classify as CALENDAR.
-
-  COUNTING appointments = CALENDAR (not UNKNOWN).
-
-Respond ONLY with valid JSON, no other text, no markdown:
-{"agent": "CALENDAR", "intent": "query_schedule", "confidence": 0.95}
-
-confidence must be 0.0 to 1.0 (your certainty in the classification)."""
+{"agent": "CALENDAR", "intent": "query_schedule", "confidence": 0.95}"""
 
 
 import re as _re
+
+# Post-booking session-close patterns — when staff says "no" / "nothing" after booking
+_SESSION_CLOSE_PATTERNS = [
+    r"^no[\s,!.]*$",
+    r"^nope[\s,!.]*$",
+    r"^nothing[\s,!.]*$",
+    r"^(that'?s?|that\s+is)\s+(all|it|good|great|fine|enough)[\s,!.]*$",
+    r"^(all\s+)?done[\s,!.]*$",
+    r"^(no|nope),?\s+thank",
+    r"^i'?m?\s+(good|done|all\s+set|fine|okay|ok)[\s,!.]*$",
+    r"^not\s+right\s+now[\s,!.]*$",
+    r"^we'?re\s+(good|done|all\s+set)[\s,!.]*$",
+    r"^that\s+(will\s+be|would\s+be)\s+all[\s,!.]*$",
+]
 
 # Keyword pre-checks: bypass LLM for common patterns the LLM keeps misrouting.
 # These are exact-match regex rules checked BEFORE calling the LLM.
@@ -144,6 +107,19 @@ async def supervisor_node(state: AgentState) -> dict:
                 thread_id=state.get("thread_id"),
                 message_preview=last_message[:60])
 
+    # ── Post-booking session close (before any LLM call) ─────
+    if state.get("booking_done"):
+        lower = last_message.lower().strip()
+        for pat in _SESSION_CLOSE_PATTERNS:
+            if _re.match(pat, lower):
+                logger.info("supervisor_session_close_detected",
+                            thread_id=state.get("thread_id"))
+                return {
+                    "current_agent": "SESSION_END",
+                    "intent": "session_close",
+                    "confidence": 1.0,
+                }
+
     # ── Keyword pre-check (code-level, never wrong) ──────────
     keyword_agent = _keyword_route(last_message)
     if keyword_agent:
@@ -172,19 +148,37 @@ async def supervisor_node(state: AgentState) -> dict:
             "confidence": 1.0,
         }
 
-    # Build recent conversation context (last 8 messages, excluding the current one)
-    # so the supervisor can resolve short follow-ups and corrections with full context
-    recent_msgs = state["messages"][:-1][-8:]
-    context_lines = []
-    for m in recent_msgs:
-        role = "User" if isinstance(m, HumanMessage) else "Assistant"
-        snippet = m.content[:120].replace("\n", " ")
-        context_lines.append(f"{role}: {snippet}")
-    context_block = "\n".join(context_lines)
-    classify_input = (
-        f"Recent conversation:\n{context_block}\n\nLatest message to classify:\n{last_message}"
-        if context_lines else last_message
+    # Build recent conversation context only when the message is ambiguous.
+    # Long, explicit messages (>55 chars) or clear action keywords don't need
+    # history to route correctly — skipping context saves ~300-500 tokens per call.
+    _SELF_CONTAINED_KEYWORDS = (
+        "book", "appointment", "register", "schedule", "patient", "send",
+        "email", "notify", "calendar", "follow", "diagnos", "medication",
+        "history", "visit", "reschedule", "cancel", "slot", "date",
     )
+    msg_lower = last_message.lower()
+    is_self_contained = (
+        len(last_message) > 55
+        or any(kw in msg_lower for kw in _SELF_CONTAINED_KEYWORDS)
+    )
+
+    if is_self_contained:
+        classify_input = last_message
+    else:
+        # Short / ambiguous message — include recent context so supervisor can
+        # resolve follow-ups like "for next month?" or "same doctor?"
+        recent_msgs = state["messages"][:-1][-6:]
+        context_lines = []
+        for m in recent_msgs:
+            role = "User" if isinstance(m, HumanMessage) else "Assistant"
+            snippet = m.content[:100].replace("\n", " ")
+            if snippet and not snippet.startswith("__AGENT_UI__"):
+                context_lines.append(f"{role}: {snippet}")
+        context_block = "\n".join(context_lines)
+        classify_input = (
+            f"Recent conversation:\n{context_block}\n\nLatest message to classify:\n{last_message}"
+            if context_lines else last_message
+        )
 
     try:
         response = await _llm.ainvoke([
@@ -257,8 +251,27 @@ def route_to_agent(state: AgentState) -> str:
         "SCHEDULING":   "scheduling_agent",
         "NOTIFICATION": "notification_agent",
         "CALENDAR":     "calendar_agent",
+        "SESSION_END":  "session_end",
         "UNKNOWN":      "fallback",
     }.get(agent, "fallback")
+
+
+async def session_end_node(state: AgentState) -> dict:
+    """Emits a warm goodbye when staff signals they're done after a booking."""
+    from langchain_core.messages import AIMessage
+    patient_name = state.get("patient_name", "")
+    name_part = f" {patient_name}'s" if patient_name else " the"
+    return {
+        "messages": [AIMessage(
+            content=(
+                f"You're all set!{name_part} appointment is confirmed. "
+                "Have a great day! 👋\n\n"
+                "> To start a new conversation, click **New Chat** above."
+            )
+        )],
+        "current_agent": "SESSION_END",
+        "booking_done": False,
+    }
 
 
 async def fallback_node(state: AgentState) -> dict:

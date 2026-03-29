@@ -18,42 +18,27 @@ settings = get_settings()
 
 _llm = make_chat_llm(temperature=0.3)
 
-EMAIL_COMPOSE_PROMPT = """You are composing a professional appointment/follow-up email for ClinicCare.
+EMAIL_COMPOSE_PROMPT = """Compose a professional appointment/follow-up email for ClinicCare.
 
-STRICT RULES:
-  1. NEVER include diagnosis, medications, test results, or any clinical data
-  2. Use ONLY the exact values provided below — do NOT use placeholder brackets like [Doctor's Name] or [Date]
-  3. If a value is "not specified", omit that detail from the email naturally
-  4. Tone: warm, professional, concise
-  5. Length: 4-6 sentences maximum
-  6. IMPORTANT: Always include specific dates, times, doctor name when available
-  7. IMPORTANT: Extract any specific dates, times, or changes from the Staff Request and include them
-  8. Close with: "Warm regards,\\nClinicCare Team\\n\\nQuestions? Call us at our clinic number."
+Rules:
+1. NEVER include diagnosis, medications, test results, or clinical data
+2. Use ONLY the exact values provided — never use placeholder brackets like [Doctor's Name]
+3. Omit any "not specified" values naturally
+4. Tone: warm, professional, concise. Length: 4–6 sentences.
+5. Include specific dates, times, doctor name when available
+6. Extract any dates/changes from Staff Request and include them
+7. Close with: "Warm regards,\nClinicCare Team\n\nQuestions? Call us at our clinic number."
 
-Email context:
-  Patient name: {patient_name}
-  Email type: {email_type}
-  Appointment / follow-up date: {appointment_date}
-  Appointment time slot: {appointment_slot}
-  Pending follow-up date on record: {pending_followup_date}
-  Doctor name: {doctor_name}
+Context:
+  Patient: {patient_name}
+  Type: {email_type}
+  Appointment date: {appointment_date}
+  Time slot: {appointment_slot}
+  Follow-up date: {pending_followup_date}
+  Doctor: {doctor_name}
+  Staff request: {staff_context}
 
-Staff request (extract any specific dates, changes, or details from this):
-  {staff_context}
-
-Write ONLY the email body. Start with "Dear {patient_name},"
-
-Example for a follow-up reminder:
-  Dear Ravi Kumar,
-
-  This is a friendly reminder about your follow-up appointment with Dr. Anika Sharma on 25 March 2026 at 10:30 AM. Please arrive 10 minutes early and bring any previous reports or prescriptions.
-
-  If you need to reschedule, please inform us at least 24 hours in advance.
-
-  Warm regards,
-  ClinicCare Team
-
-  Questions? Call us at our clinic number."""
+Write ONLY the email body. Start with "Dear {patient_name},\""""
 
 EMAIL_SUBJECTS = {
     "reminder":      "Appointment Reminder — ClinicCare",
@@ -119,7 +104,6 @@ async def compose_email(state: AgentState) -> dict:
     try:
         response = await _llm.ainvoke([
             SystemMessage(content=prompt),
-            HumanMessage(content="Compose the email now."),
         ])
         logger.info("email_composed", email_type=email_type,
                     patient_id=state.get("patient_id"))

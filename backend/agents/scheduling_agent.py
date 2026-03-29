@@ -92,6 +92,15 @@ Respond ONLY with valid JSON:
 {{"appointment_date": "2026-03-25", "appointment_slot": null, "followup_reason": null, "patient_name_in_message": "Ajay Varma", "doctor_name_in_message": "Dr. Rohan", "is_reschedule": false, "old_appointment_date": null}}"""
 
 
+import re as _re
+
+# Matches slot-picker button output: "Book 11:00 AM on 2026-04-05 for Salman Khan with Dr. Rohan Mehta"
+_SLOT_PICKER_RE = _re.compile(
+    r"^Book (\d{1,2}:\d{2} [AP]M) on (\d{4}-\d{2}-\d{2}) for (.+?) with (.+)$",
+    _re.IGNORECASE,
+)
+
+
 async def extract_appointment_details(state: AgentState, db) -> dict:
     """
     1. Use LLM to extract appointment_date, slot, reason and patient name from message.
@@ -129,6 +138,51 @@ async def extract_appointment_details(state: AgentState, db) -> dict:
         elif isinstance(msg, AIMessage) and last_message and not previous_question:
             previous_question = msg.content[:200]
             break
+
+    # ── Fast-path: slot-picker button message — parse without LLM ──
+    # Slot picker sends: "Book 11:00 AM on 2026-04-05 for Salman Khan with Dr. Rohan Mehta"
+    # All fields are explicit — no need to call the extraction LLM.
+    slot_match = _SLOT_PICKER_RE.match(last_message.strip())
+    if slot_match and state.get("patient_id"):
+        appointment_slot = slot_match.group(1)
+        appointment_date = slot_match.group(2)
+        # Doctor name from message may differ from state (user could pick different doctor)
+        doctor_name_in_msg = slot_match.group(4).strip()
+        followup_reason = state.get("followup_reason")
+        patient_id = state.get("patient_id")
+        patient_name = state.get("patient_name")
+        patient_email = state.get("patient_email")
+        assigned_doctor_id = state.get("assigned_doctor_id")
+        assigned_doctor_name = state.get("assigned_doctor_name")
+
+        # Resolve doctor from DB if name differs from state
+        if doctor_name_in_msg and doctor_name_in_msg != assigned_doctor_name:
+            doc_by_name = await db["users"].find_one(
+                {"name": {"$regex": re.escape(doctor_name_in_msg), "$options": "i"}, "role": "doctor"},
+                {"_id": 1, "name": 1},
+            )
+            if doc_by_name:
+                assigned_doctor_id = doc_by_name["_id"]
+                assigned_doctor_name = doc_by_name["name"]
+
+        logger.info("scheduling_slot_picker_fast_path",
+                    slot=appointment_slot, date=appointment_date,
+                    patient_id=patient_id)
+        return {
+            "appointment_date": appointment_date,
+            "appointment_slot": appointment_slot,
+            "followup_reason": followup_reason,
+            "patient_id": patient_id,
+            "patient_name": patient_name,
+            "patient_email": patient_email,
+            "assigned_doctor_id": assigned_doctor_id,
+            "assigned_doctor_name": assigned_doctor_name,
+            "scheduling_retry_count": 0,
+            "reminder_sent": False,
+            "email_sent": False,
+            "booking_done": False,
+            "intent": "continue",
+        }
 
     # ── Step 1: Extract details from message ─────────────────
     prompt = EXTRACT_DETAILS_PROMPT.format(
@@ -573,7 +627,7 @@ def route_after_availability(state: AgentState) -> str:
 
 
 async def confirm_booking(state: AgentState, db) -> dict:
-    import uuid, json as _json
+    import uuid, json as _json, asyncio
     from datetime import datetime
     appt_id = "APT" + uuid.uuid4().hex[:8].upper()
     doc = {
@@ -591,12 +645,22 @@ async def confirm_booking(state: AgentState, db) -> dict:
     }
     await db["appointments"].insert_one(doc)
     logger.info("appointment_booked", id=appt_id)
-    conf_state = {**state, "email_type": "confirmation"}
-    composed = await compose_email(conf_state)
-    email_sent = False
-    if composed.get("email_body"):
-        result = await send_email({**conf_state, **composed})
-        email_sent = result.get("email_sent", False)
+
+    # Fire confirmation email in background — don't block the booking card response
+    patient_email = state.get("patient_email") or ""
+    has_email = bool(patient_email)
+
+    if has_email:
+        async def _send_confirmation():
+            try:
+                conf_state = {**state, "email_type": "confirmation"}
+                composed = await compose_email(conf_state)
+                if composed.get("email_body"):
+                    await send_email({**conf_state, **composed})
+            except Exception as e:
+                logger.error("confirm_booking_email_failed",
+                             appointment_id=appt_id, error=str(e))
+        asyncio.create_task(_send_confirmation())
 
     ui_payload = _json.dumps({
         "type": "booking_confirm",
@@ -606,8 +670,10 @@ async def confirm_booking(state: AgentState, db) -> dict:
         "appointment_date": state.get("appointment_date", ""),
         "appointment_slot": state.get("appointment_slot", ""),
         "reason": state.get("followup_reason") or "General Consultation",
-        "patient_email": state.get("patient_email") or "",
-        "email_sent": email_sent,
+        "patient_email": patient_email,
+        "email_sent": False,
+        "email_pending": has_email,
+        "follow_up": "Is there anything else? I can help with another appointment or a different patient.",
     })
     return {
         "messages": [AIMessage(content=f"__AGENT_UI__:{ui_payload}")],
@@ -625,25 +691,11 @@ async def send_reminder(state: AgentState) -> dict:
     if composed.get("email_body"):
         result = await send_email({**reminder_state, **composed})
         email_sent = result.get("email_sent", False)
-    patient_name = state.get("patient_name") or "patient"
-    patient_email = state.get("patient_email") or ""
-    email_note = (
-        f"A confirmation email has been sent to {patient_email}."
-        if email_sent
-        else "No email on file — confirmation not sent."
-    )
+    # Emails sent silently — no text message added here.
+    # The booking_confirm card from confirm_booking is the visible output.
     return {
         "reminder_sent": True,
         "email_sent": email_sent,
-        "messages": [AIMessage(
-            content=(
-                f"All set! **{patient_name}** is booked for "
-                f"**{state.get('appointment_date')}** at **{state.get('appointment_slot')}** "
-                f"with {state.get('assigned_doctor_name') or 'the doctor'}. "
-                f"{email_note}\n\n"
-                f"Is there anything else — another appointment or a different patient?"
-            )
-        )],
     }
 
 

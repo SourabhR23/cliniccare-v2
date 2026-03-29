@@ -36,25 +36,25 @@ settings = get_settings()
 
 _llm = make_chat_llm(temperature=0)
 
+
+def _recent(messages: list, n: int = 8) -> list:
+    """Return only the last n messages to cap input tokens per LLM call."""
+    return messages[-n:] if len(messages) > n else messages
+
 # ─────────────────────────────────────────────────────────────
 # NODE 1 — IDENTIFY PATIENT
 # ─────────────────────────────────────────────────────────────
 
-IDENTIFY_PROMPT = """You are a warm, friendly clinic receptionist. Speak naturally and concisely — like a real person, not a robot. Be polite and helpful.
+IDENTIFY_PROMPT = """Search for the patient and respond to the staff.
 
-The staff member wants to check in or find a patient.
+If message says "search again" or "different patient" — ask for name/phone, do NOT call any tool.
 
-If the message says "search again", "different patient", or similar — ask: "Sure! What's the patient's name or phone number?"
-Do NOT call any tool in that case.
+Otherwise extract name/phone and call search_patients:
+- 1 match → "Found **[Name]** — last visit [date], assigned to [doctor]. Shall I proceed?"
+- Multiple → list top 3, ask which one
+- No match → "Couldn't find '[query]'. Register as new patient?"
 
-Otherwise, extract the patient name and/or phone number from the message and search using the search_patients tool.
-
-After searching:
-- If 1 exact match: say "Found **[Name]** — last visit [date], assigned to [doctor]. Shall I proceed with this patient?"
-- If multiple matches: list the top 3 and ask "Which patient did you mean?"
-- If no match: say "I couldn't find '[query]' in the system. Would you like to register them as a new patient?"
-
-Always use the search_patients tool before concluding new vs returning."""
+Always call search_patients before concluding new vs returning."""
 
 
 async def identify_patient(state: AgentState, tools: list) -> dict:
@@ -106,7 +106,7 @@ async def identify_patient(state: AgentState, tools: list) -> dict:
     llm_with_tools = _llm.bind_tools(tools)
     response = await llm_with_tools.ainvoke([
         SystemMessage(content=IDENTIFY_PROMPT),
-        *state["messages"],
+        *_recent(state["messages"]),
     ])
 
     if not response.tool_calls:
@@ -176,23 +176,36 @@ async def identify_patient(state: AgentState, tools: list) -> dict:
             "patient_id": None,
         }
 
-    # ── Get LLM to interpret results (1 match or multiple) ──
-    final_response = await llm_with_tools.ainvoke([
-        SystemMessage(content=IDENTIFY_PROMPT),
-        *state["messages"],
-        response,
-        *tool_results,
-    ])
-
-    # Exactly 1 result → returning patient
+    # ── Format result with code — no second LLM call needed ──
     patient_id = None
     patient_name = None
+    is_new = False
+
     if len(all_results) == 1:
-        patient_id = all_results[0]["id"]
-        patient_name = all_results[0]["name"]
+        r = all_results[0]
+        patient_id = r["id"]
+        patient_name = r["name"]
         is_new = False
+        last_visit = r.get("last_visit_date") or "No visits yet"
+        visits = r.get("total_visits", 0)
+        allergies = r.get("known_allergies", [])
+        allergy_note = f" | Allergies: {', '.join(allergies)}" if allergies else ""
+        final_response = AIMessage(
+            content=(
+                f"Found **{patient_name}** — {visits} visit(s), "
+                f"last visit: {last_visit}{allergy_note}. Shall I proceed?"
+            )
+        )
+    elif len(all_results) > 1:
+        is_new = None  # Ambiguous — wait for user to clarify
+        lines = ["Multiple patients found — which one did you mean?"]
+        for i, r in enumerate(all_results[:3], 1):
+            phone_display = r.get("phone", "no phone")
+            lines.append(f"{i}. **{r['name']}** · {phone_display}")
+        final_response = AIMessage(content="\n".join(lines))
     else:
-        is_new = len(all_results) == 0
+        is_new = True
+        final_response = AIMessage(content="")  # Unreachable: 0-results handled above
 
     return {
         "messages": [response, *tool_results, final_response],
@@ -283,26 +296,24 @@ async def fetch_patient_record(state: AgentState, tools: list) -> dict:
 # NODE 2b — COLLECT INFO (new patient)
 # ─────────────────────────────────────────────────────────────
 
-COLLECT_INFO_PROMPT = """You are a warm, friendly clinic receptionist registering a new patient. Be conversational and polite — ask for one piece of information at a time, naturally. Never ask multiple questions at once.
+COLLECT_INFO_PROMPT = """Collect new patient registration fields one at a time. Be polite and conversational.
 
-Required fields (in order):
-  1. full_name — patient's full name
-  2. date_of_birth — format YYYY-MM-DD (ask as "date of birth" in natural language)
-  3. sex — M, F, or O
-  4. phone — 10-digit mobile number
-  5. assigned_doctor_id — use get_doctors_list tool to show available doctors and let the user pick
+Required (ask in order):
+1. full_name
+2. date_of_birth (YYYY-MM-DD)
+3. sex (M/F/O)
+4. phone (10 digits)
+5. assigned_doctor_id — call get_doctors_list first, present options, let user pick
 
-Optional (ask only after required fields are done):
-  - email
-  - address
+Optional (after required fields done): email, address
 
-RULES:
-- Ask for EXACTLY ONE missing field at a time. Do not ask multiple fields together.
-- If the user provides a correction ("actually it's X" / "sorry, wrong number"), accept it gracefully and move on.
-- When asking about the doctor, ALWAYS call get_doctors_list tool first, then present the list.
-- Once all required fields are collected, say EXACTLY: "All information collected. Ready to register."
+Rules:
+- Ask ONE missing field at a time only
+- Accept corrections gracefully ("actually it's X")
+- Call get_doctors_list before asking about doctor
+- When all required fields collected, say exactly: "All information collected. Ready to register."
 
-Current collected fields: {collected_fields}"""
+Collected so far: {collected_fields}"""
 
 
 async def collect_info(state: AgentState, tools: list) -> dict:
@@ -319,7 +330,7 @@ async def collect_info(state: AgentState, tools: list) -> dict:
 
     response = await llm_with_tools.ainvoke([
         SystemMessage(content=prompt),
-        *state["messages"],
+        *_recent(state["messages"]),
     ])
 
     new_messages = [response]
@@ -338,7 +349,7 @@ async def collect_info(state: AgentState, tools: list) -> dict:
         # Let LLM continue after tool results
         followup = await llm_with_tools.ainvoke([
             SystemMessage(content=prompt),
-            *state["messages"],
+            *_recent(state["messages"]),
             response,
             *tool_results,
         ])
@@ -390,7 +401,7 @@ async def _extract_fields_with_llm(messages: list, existing: dict) -> dict:
     if not lines:
         return existing
 
-    conversation = "\n".join(lines[-20:])
+    conversation = "\n".join(lines[-12:])
     try:
         response = await _llm.ainvoke([
             SystemMessage(content=_EXTRACT_FIELDS_PROMPT.format(conversation=conversation))
@@ -440,6 +451,7 @@ async def validate_info(state: AgentState, tools: list) -> dict:
     """
     Validates all required fields before attempting registration.
     Routes back to collect_info if fields are missing.
+    For form submissions (intent=form_submitted), validates in code — no LLM needed.
     """
     collected = state.get("collected_fields", {})
     attempts = state.get("registration_attempts", 0)
@@ -461,6 +473,12 @@ async def validate_info(state: AgentState, tools: list) -> dict:
     missing = [f for f in REQUIRED_FIELDS if not collected.get(f)]
 
     if missing:
+        # Form submissions arrive pre-validated by the UI — treat missing as a
+        # recoverable gap, not a hard error. For manual entry, ask collect_info.
+        if state.get("intent") == "form_submitted":
+            # UI form should never be missing required fields; log and proceed anyway
+            logger.warning("form_submitted_missing_fields", missing=missing,
+                           collected_keys=list(collected.keys()))
         return {
             "messages": [AIMessage(
                 content=f"Still need: {', '.join(missing)}. Let me ask for those."
@@ -469,6 +487,7 @@ async def validate_info(state: AgentState, tools: list) -> dict:
             "intent": "needs_more_info",
         }
 
+    # All fields present — ready to register (no LLM call required)
     return {
         "registration_attempts": 0,
         "intent": "ready_to_register",

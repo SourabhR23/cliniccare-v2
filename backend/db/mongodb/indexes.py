@@ -106,6 +106,18 @@ async def _create_patient_indexes(db: AsyncIOMotorDatabase) -> None:
     """
     collection = db["patients"]
 
+    # Migration: drop the old unique phone index if it still exists.
+    # Phone uniqueness was removed so that family members sharing a number
+    # can each be registered as separate patients.
+    try:
+        index_info = await collection.index_information()
+        if "idx_patient_phone" in index_info and index_info["idx_patient_phone"].get("unique"):
+            await collection.drop_index("idx_patient_phone")
+            logger.info("patient_phone_unique_index_dropped",
+                        reason="family members may share a phone number")
+    except Exception as e:
+        logger.warning("patient_phone_index_migration_skipped", error=str(e))
+
     indexes = [
         # Patient name search (receptionist search bar, Add Visit modal)
         IndexModel(
@@ -128,12 +140,11 @@ async def _create_patient_indexes(db: AsyncIOMotorDatabase) -> None:
             name="idx_doctor_patients_by_date",
         ),
 
-        # Phone lookup — reception identifies returning patients by phone
+        # Phone lookup — sparse (non-unique: relatives may share a number)
         IndexModel(
             [("personal.phone", ASCENDING)],
             name="idx_patient_phone",
-            unique=True,    # No two patients with same phone
-            sparse=True,    # Sparse: skip docs where phone is null
+            sparse=True,
         ),
 
         # Email lookup

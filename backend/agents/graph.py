@@ -29,7 +29,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from langgraph.graph import StateGraph, START, END
 
 from backend.agents.state import AgentState
-from backend.agents.supervisor import supervisor_node, route_to_agent, fallback_node
+from backend.agents.supervisor import supervisor_node, route_to_agent, fallback_node, session_end_node
 from backend.agents.receptionist_agent import (
     identify_patient, route_after_identify,
     fetch_patient_record, collect_info,
@@ -138,8 +138,9 @@ async def build_graph(db: AsyncIOMotorDatabase, redis_client=None):
     graph = StateGraph(AgentState)
 
     # Supervisor
-    graph.add_node("supervisor", supervisor_node)
-    graph.add_node("fallback",   fallback_node)
+    graph.add_node("supervisor",   supervisor_node)
+    graph.add_node("fallback",     fallback_node)
+    graph.add_node("session_end",  session_end_node)
 
     # Receptionist
     graph.add_node("identify_patient",     _wrap(identify_patient,      tools=patient_tools))
@@ -181,9 +182,11 @@ async def build_graph(db: AsyncIOMotorDatabase, redis_client=None):
         "scheduling_agent":   "extract_appointment_details",
         "notification_agent": "compose_email",
         "calendar_agent":     "calendar_agent",
+        "session_end":        "session_end",
         "fallback":           "fallback",
     })
-    graph.add_edge("fallback", END)
+    graph.add_edge("fallback",     END)
+    graph.add_edge("session_end",  END)
 
     graph.add_conditional_edges("identify_patient", route_after_identify, {
         "fetch_patient_record": "fetch_patient_record",

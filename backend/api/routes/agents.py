@@ -68,6 +68,7 @@ class ChatResponse(BaseModel):
     response: str                           # Last AIMessage content
     current_agent: str
     patient_id: Optional[str] = None
+    session_done: bool = False              # True when staff ends session after booking
     # RAG-specific — populated when current_agent == "RAGAgent"
     sources: list = []
     cached: bool = False
@@ -294,6 +295,7 @@ async def agent_chat(
             response=response_text,
             current_agent=current_agent,
             patient_id=result.get("patient_id"),
+            session_done=current_agent == "SESSION_END",
             sources=rag_sources if is_rag else [],
             cached=result.get("rag_cached", False) if is_rag else False,
             retrieval_count=len(rag_sources) if is_rag else 0,

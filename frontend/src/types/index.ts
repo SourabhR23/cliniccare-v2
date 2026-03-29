@@ -115,6 +115,7 @@ export interface AgentChatResponse {
   response: string
   current_agent: string
   patient_id?: string
+  session_done?: boolean
   // RAG-specific — present when current_agent is RAGAgent
   sources?: RAGSource[]
   cached?: boolean
@@ -143,6 +144,8 @@ export interface AgentUIBookingConfirm {
   reason: string
   patient_email: string
   email_sent: boolean
+  email_pending?: boolean
+  follow_up?: string
 }
 
 export interface AgentUIRegisterPrompt {

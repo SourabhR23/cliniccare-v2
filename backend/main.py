@@ -42,6 +42,7 @@ from backend.api.routes.rag import router as rag_router
 from backend.api.routes.agents import router as agents_router
 from backend.api.routes.appointments import router as appointments_router
 from backend.api.routes.pdf import router as pdf_router
+from backend.api.routes.patient_chat import router as patient_chat_router
 
 logger = structlog.get_logger(__name__)
 
@@ -128,6 +129,20 @@ async def lifespan(app: FastAPI):
                 detail="Agents unavailable. Check SUPABASE_DB_URL.",
             )
             app.state.agent_graph = None
+
+    # 5. Patient booking graph — built once, shared across all requests
+    try:
+        from backend.agents.patient_booking_agent import build_patient_booking_graph
+        from langgraph.checkpoint.memory import MemorySaver
+        patient_checkpointer = MemorySaver()
+        patient_graph = build_patient_booking_graph(db, patient_checkpointer)
+        app.state.patient_graph = patient_graph
+        app.state.patient_checkpointer = patient_checkpointer
+        logger.info("patient_graph_ready")
+    except Exception as e:
+        logger.warning("patient_graph_init_failed", error=str(e))
+        app.state.patient_graph = None
+        app.state.patient_checkpointer = None
 
     logger.info("app_ready", host=settings.app_host, port=settings.app_port)
 
@@ -226,6 +241,7 @@ app.include_router(rag_router, prefix="/api")
 app.include_router(agents_router, prefix="/api")
 app.include_router(appointments_router, prefix="/api")
 app.include_router(pdf_router, prefix="/api")
+app.include_router(patient_chat_router, prefix="/api")
 
 
 # ─────────────────────────────────────────────────────────────
