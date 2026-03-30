@@ -49,6 +49,52 @@ _DONE_SIGNALS = [
 ]
 
 
+CLINIC_SLOTS = [
+    "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
+    "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM",
+]
+
+
+@router.get("/doctors")
+async def patient_get_doctors(db: AsyncIOMotorDatabase = Depends(get_db)):
+    """Public endpoint — list all active doctors for patient booking form."""
+    cursor = db["users"].find(
+        {"role": "doctor", "is_active": True},
+        {"_id": 1, "name": 1, "specialization": 1},
+    )
+    docs = await cursor.to_list(length=20)
+    return {
+        "doctors": [
+            {
+                "id": str(d["_id"]),
+                "name": d["name"],
+                "specialization": d.get("specialization") or "General Physician",
+            }
+            for d in docs
+        ]
+    }
+
+
+@router.get("/slots")
+async def patient_get_slots(
+    doctor_id: str,
+    date: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Public endpoint — return available slots for a doctor on a given date."""
+    cursor = db["appointments"].find(
+        {
+            "doctor_id": doctor_id,
+            "appointment_date": date,
+            "status": {"$ne": "cancelled"},
+        },
+        {"appointment_slot": 1},
+    )
+    booked = [d.get("appointment_slot") for d in await cursor.to_list(None) if d.get("appointment_slot")]
+    available = [s for s in CLINIC_SLOTS if s not in booked]
+    return {"date": date, "slots": available}
+
+
 class PatientChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None

@@ -453,13 +453,13 @@ class PatientService:
 
             result.append(PatientListItem(
                 id=doc["_id"],
-                name=p["name"],
+                name=p.get("name") or "Unknown",
                 age=age,
-                sex=p["sex"],
-                blood_group=p.get("blood_group", "Unknown"),
-                phone=p["phone"],
-                known_allergies=p.get("known_allergies", []),
-                chronic_conditions=p.get("chronic_conditions", []),
+                sex=p.get("sex") or "Unknown",
+                blood_group=p.get("blood_group") or "Unknown",
+                phone=p.get("phone") or "",
+                known_allergies=p.get("known_allergies") or [],
+                chronic_conditions=p.get("chronic_conditions") or [],
                 total_visits=m.get("total_visits", 0),
                 last_visit_date=m.get("last_visit_date"),
                 pending_followup_date=m.get("pending_followup_date"),
@@ -509,13 +509,13 @@ class PatientService:
                     pass
             result.append(PatientListItem(
                 id=doc["_id"],
-                name=p["name"],
+                name=p.get("name") or "Unknown",
                 age=age,
-                sex=p["sex"],
-                blood_group=p.get("blood_group", "Unknown"),
-                phone=p["phone"],
-                known_allergies=p.get("known_allergies", []),
-                chronic_conditions=p.get("chronic_conditions", []),
+                sex=p.get("sex") or "Unknown",
+                blood_group=p.get("blood_group") or "Unknown",
+                phone=p.get("phone") or "",
+                known_allergies=p.get("known_allergies") or [],
+                chronic_conditions=p.get("chronic_conditions") or [],
                 total_visits=m.get("total_visits", 0),
                 last_visit_date=m.get("last_visit_date"),
                 pending_followup_date=m.get("pending_followup_date"),
@@ -583,19 +583,19 @@ class PatientService:
                     pass
             result.append(PatientListItem(
                 id=doc["_id"],
-                name=p["name"],
+                name=p.get("name") or "Unknown",
                 age=age,
-                sex=p["sex"],
-                blood_group=p.get("blood_group", "Unknown"),
-                phone=p["phone"],
-                known_allergies=p.get("known_allergies", []),
-                chronic_conditions=p.get("chronic_conditions", []),
+                sex=p.get("sex") or "Unknown",
+                blood_group=p.get("blood_group") or "Unknown",
+                phone=p.get("phone") or "",
+                known_allergies=p.get("known_allergies") or [],
+                chronic_conditions=p.get("chronic_conditions") or [],
                 total_visits=m.get("total_visits", 0),
                 last_visit_date=m.get("last_visit_date"),
                 pending_followup_date=m.get("pending_followup_date"),
             ))
         return result
- 
+
 
     # ─────────────────────────────────────────────────────────
     # READ: VISITS

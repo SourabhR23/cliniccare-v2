@@ -149,3 +149,9 @@ export const getHealth = () =>
 // Patient chatbot (public — no auth token needed)
 export const patientChatApi = (message: string, session_id?: string | null) =>
   axios.post(`${BASE_URL}/api/patient/chat`, { message, session_id: session_id ?? undefined })
+
+export const getPatientDoctors = () =>
+  axios.get(`${BASE_URL}/api/patient/doctors`)
+
+export const getPatientSlots = (doctor_id: string, date: string) =>
+  axios.get(`${BASE_URL}/api/patient/slots`, { params: { doctor_id, date } })
