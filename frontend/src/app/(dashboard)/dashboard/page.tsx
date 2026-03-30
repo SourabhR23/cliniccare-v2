@@ -744,7 +744,7 @@ function ReceptionistDashboard({
     setActionLoading((p) => ({ ...p, [id]: 'delete' }))
     try {
       await deleteAppointment(id)
-      setRemovedIds((prev) => new Set([...prev, id]))
+      setRemovedIds((prev) => new Set(Array.from(prev).concat(id)))
       toast.success('Appointment deleted')
       refetchAppts()
     } catch (err: unknown) {
