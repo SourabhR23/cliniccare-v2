@@ -2,10 +2,14 @@
 backend/agents/supervisor.py
 """
 
+import hashlib
 import json
+import re as _re
+import time
 import structlog
 from langchain_core.messages import SystemMessage, HumanMessage
 
+from backend.agents.history_compressor import maybe_compress
 from backend.agents.state import AgentState
 from backend.core.config import get_settings
 from backend.core.llm import make_chat_llm
@@ -14,6 +18,52 @@ logger = structlog.get_logger(__name__)
 settings = get_settings()
 
 _llm = make_chat_llm(temperature=0)
+
+# ── Routing cache ─────────────────────────────────────────────────────────────
+# In-memory TTL cache for supervisor routing decisions.
+# Proper nouns (patient/doctor names) and dates are stripped before hashing so
+# structurally identical messages share the same cache entry.
+#
+# Skipped for: corrections ("actually…", "wait…"), low-confidence results.
+#
+# TTL:       600s (10 minutes) — intent doesn't change mid-session
+# Max size:  500 entries — evicts oldest when full
+
+_routing_cache: dict[str, tuple[dict, float]] = {}
+_CACHE_TTL_SECONDS = 600
+_CACHE_MAX_ENTRIES = 500
+
+# Patterns stripped before hashing (capitalised proper nouns, numeric dates)
+_PROPER_NOUN_RE  = _re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b')
+_DATE_RE         = _re.compile(r'\b\d{1,2}[\s/-][A-Za-z]+[\s/-]\d{2,4}\b|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b')
+_MULTI_SPACE_RE  = _re.compile(r'\s+')
+
+
+def _routing_cache_key(message: str, staff_role: str) -> str:
+    """Normalise message by stripping names/dates, then hash with staff_role."""
+    normalised = _PROPER_NOUN_RE.sub('[N]', message)
+    normalised = _DATE_RE.sub('[D]', normalised)
+    normalised = _MULTI_SPACE_RE.sub(' ', normalised).lower().strip()
+    raw = f"route:{staff_role}:{normalised}"
+    return hashlib.md5(raw.encode()).hexdigest()[:16]
+
+
+def _cache_get(key: str) -> dict | None:
+    entry = _routing_cache.get(key)
+    if entry:
+        result, ts = entry
+        if time.time() - ts < _CACHE_TTL_SECONDS:
+            return result
+        del _routing_cache[key]
+    return None
+
+
+def _cache_set(key: str, result: dict) -> None:
+    if len(_routing_cache) >= _CACHE_MAX_ENTRIES:
+        oldest = min(_routing_cache, key=lambda k: _routing_cache[k][1])
+        del _routing_cache[oldest]
+    _routing_cache[key] = (result, time.time())
+
 
 SUPERVISOR_SYSTEM_PROMPT = """Route clinic staff messages to the correct agent. Output JSON only, no other text.
 
@@ -33,8 +83,6 @@ Rules:
 
 {"agent": "CALENDAR", "intent": "query_schedule", "confidence": 0.95}"""
 
-
-import re as _re
 
 # Post-booking session-close patterns — when staff says "no" / "nothing" after booking
 _SESSION_CLOSE_PATTERNS = [
@@ -102,7 +150,10 @@ def _is_correction(message: str) -> bool:
 
 
 async def supervisor_node(state: AgentState) -> dict:
-    last_message = state["messages"][-1].content
+    # ── History compression (before routing — keeps token cost flat) ──────────
+    messages = await maybe_compress(state["messages"])
+
+    last_message = messages[-1].content
     logger.info("supervisor_classifying",
                 thread_id=state.get("thread_id"),
                 message_preview=last_message[:60])
@@ -148,6 +199,15 @@ async def supervisor_node(state: AgentState) -> dict:
             "confidence": 1.0,
         }
 
+    # ── Routing cache key (computed once, reused for get + set) ─────────────
+    staff_role = state.get("staff_role", "")
+    cache_key = _routing_cache_key(last_message, staff_role)
+    cached = _cache_get(cache_key)
+    if cached:
+        logger.info("supervisor_cache_hit", cache_key=cache_key,
+                    agent=cached.get("current_agent"))
+        return cached
+
     # Build recent conversation context only when the message is ambiguous.
     # Long, explicit messages (>55 chars) or clear action keywords don't need
     # history to route correctly — skipping context saves ~300-500 tokens per call.
@@ -167,7 +227,7 @@ async def supervisor_node(state: AgentState) -> dict:
     else:
         # Short / ambiguous message — include recent context so supervisor can
         # resolve follow-ups like "for next month?" or "same doctor?"
-        recent_msgs = state["messages"][:-1][-6:]
+        recent_msgs = messages[:-1][-6:]
         context_lines = []
         for m in recent_msgs:
             role = "User" if isinstance(m, HumanMessage) else "Assistant"
@@ -191,12 +251,17 @@ async def supervisor_node(state: AgentState) -> dict:
         confidence = float(parsed.get("confidence", 0.0))
         logger.info("supervisor_classified", agent=agent, intent=intent, confidence=confidence)
         will_fallback = agent == "UNKNOWN" or confidence < 0.70
-        return {
+        result = {
             "current_agent": agent,
             "intent": intent,
             "confidence": confidence,
             **({"fallback_reason": "low_confidence"} if will_fallback else {}),
         }
+        # Cache only high-confidence, non-correction results (corrections are
+        # context-dependent and must never be replayed from cache)
+        if not will_fallback and not _is_correction(last_message):
+            _cache_set(cache_key, result)
+        return result
 
     except json.JSONDecodeError as e:
         logger.warning("supervisor_json_parse_error", error=str(e))

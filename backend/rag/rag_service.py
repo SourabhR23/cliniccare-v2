@@ -50,6 +50,7 @@ from openai import AsyncOpenAI
 from backend.core.config import get_settings
 from backend.models.patient import VisitDocument, EmbeddingStatusEnum
 from backend.rag.chunking.visit_chunker import VisitChunker
+from backend.rag.complexity_classifier import classify as classify_query
 from backend.rag.embedding.openai_embedder import OpenAIEmbedder
 from backend.rag.retrieval.chroma_client import ChromaVisitCollection
 from backend.rag.retrieval.hybrid_retriever import HybridRetriever
@@ -389,6 +390,13 @@ class RAGService:
                 result["cached"] = True
                 return result
 
+        # ── Complexity classification ─────────────────────────
+        # Simple queries (single fact / most-recent value) use a lighter path:
+        #   top-4 retrieval, skip reranker, max_tokens=300
+        # Complex queries (trends, multi-condition, time-range) use the full pipeline.
+        complexity = classify_query(query)
+        logger.info("rag_query_classified", complexity=complexity, query_preview=query[:60])
+
         # ── Retrieve ──────────────────────────────────────────
         candidates = await self._hybrid.retrieve(query, patient_id=patient_id, doctor_id=doctor_id)
 
@@ -400,11 +408,16 @@ class RAGService:
                 "retrieval_count": 0,
             }
 
-        # ── Rerank ────────────────────────────────────────────
-        top_chunks = await self._reranker.rerank(query, candidates)
+        # ── Rerank (complex only) ─────────────────────────────
+        if complexity == "complex":
+            top_chunks = await self._reranker.rerank(query, candidates)
+        else:
+            # Simple path: take the top 4 by retrieval score, skip reranker
+            top_chunks = candidates[:4]
 
         # ── Synthesize ────────────────────────────────────────
-        answer = await self._synthesize(query, top_chunks)
+        max_tokens = 600 if complexity == "complex" else 300
+        answer = await self._synthesize(query, top_chunks, max_tokens_override=max_tokens)
 
         # ── Build sources list ────────────────────────────────
         sources = self._build_sources(top_chunks)
@@ -475,6 +488,7 @@ class RAGService:
         query: str,
         chunks: List[dict],
         system_override: Optional[str] = None,
+        max_tokens_override: Optional[int] = None,
     ) -> str:
         """
         Build the context string from chunks and call GPT-4o-mini.
@@ -509,7 +523,7 @@ Please answer the query based only on the records above."""
             ],
             temperature=0.1,   # clinical precision: minimal randomness
             top_p=0.3,          # narrow probability mass
-            max_tokens=600,
+            max_tokens=max_tokens_override or 600,
         )
 
         return response.choices[0].message.content or ""

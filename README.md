@@ -139,44 +139,117 @@ Query
 
 ### Multi-Agent System (LangGraph)
 
-A supervisor-routed graph of 4 specialised agents, each with its own tools and responsibilities:
+Two independent LangGraph graphs handle all AI interactions — a **staff system** (authenticated, role-gated) and a **public patient chatbot** (no auth, frontpage).
+
+#### Staff Agent Graph
 
 ```
-User Message
-     │
-     ▼
-┌─────────────┐
-│  Supervisor │  — classifies intent, routes to correct agent
-└──────┬──────┘
-       │
-  ┌────┴──────────────────────────────────────┐
-  │            │            │          │      │
-  ▼            ▼            ▼          ▼      │
-┌──────┐  ┌────────┐  ┌──────────┐  ┌──────┐  │
-│ RAG  │  │ Recept │  │ Schedule │  │Notif │  │
-│Agent │  │ Agent  │  │  Agent   │  │Agent │  │
-└──────┘  └────────┘  └────┬─────┘  └──────┘  │
-                            │                 │
-                     ┌──────▼──────┐          │
-                     │  Calendar   │◄─────────┘
-                     │    Agent   │  (slot checks)
-                     └────────────┘
+                    Staff Message (JWT authenticated)
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │           Supervisor           │
+              │  • history compression         │
+              │  • keyword pre-check (regex)   │
+              │  • routing cache (10min TTL)   │
+              │  • LLM intent classification   │
+              │  • RBAC enforcement            │
+              └──────────────┬────────────────┘
+                             │
+        ┌────────────────────┼──────────────────────────┐
+        │                    │                           │
+        ▼                    ▼                           ▼
+┌───────────────┐   ┌────────────────┐        ┌─────────────────┐
+│  Receptionist │   │   RAG Agent    │        │    Scheduling   │
+│     Agent     │   │                │        │      Agent      │
+│               │   │  ReAct loop    │        │                 │
+│ identify ─────┤   │  max 5 calls   │        │ extract details │
+│ fetch record  │   │                │        │ check slots     │
+│ collect info  │   │  Tools:        │        │ confirm booking │
+│ validate      │   │  • lookup_     │        │ send reminder   │
+│ register      │   │    patient     │        │ wait for reply  │
+│               │   │  • rag_query   │        │ classify reply  │
+│ Tools:        │   │  • previsit_   │        │                 │
+│ • search_     │   │    brief       │        │ Emits UI cards: │
+│   patients    │   │                │        │ • doctor_picker │
+│ • get_patient │   └───────┬────────┘        │ • slot_picker   │
+│ • create_     │           │                 │ • booking_      │
+│   patient     │           ▼                 │   confirm       │
+│               │         END                 └────────┬────────┘
+│ Emits UI:     │                                      │
+│ • reg form    │                              ┌───────▼────────┐
+│ • slot picker │                              │    Calendar    │
+└───────┬───────┘                              │     Agent      │
+        │                                      │                │
+        ▼                                      │ query schedule │
+       END                                     │ cancel appt    │
+                                               │ clear followup │
+        ┌──────────────────────────────────┐   └───────┬────────┘
+        │       Notification Agent         │           │
+        │                                  │           ▼
+        │  compose_email                   │          END
+        │   ├─ template path (no LLM ~80%) │
+        │   └─ LLM path (custom notes)     │   ┌──────────────┐
+        │  send_email (SMTP, 3 retries)    │   │  session_end │
+        │  log_result                      │   │   fallback   │
+        └──────────────────────────────────┘   └──────────────┘
 ```
 
-**ReceptionistAgent** — identifies existing patients by name, registers new patients, answers clinic queries
+**Role access enforced by Supervisor:**
 
-**RAGAgent** — answers clinical history questions using the RAG pipeline (ReAct loop, max 5 tool calls)
+| Role | Permitted | Blocked |
+|---|---|---|
+| receptionist | Receptionist · Scheduling · Notification · Calendar | RAG |
+| doctor | RAG · Calendar | Receptionist · Scheduling · Notification |
+| admin | Calendar | everything else |
 
-**SchedulingAgent** — books appointments, resolves slot conflicts, delegates availability checks to CalendarAgent
+---
 
-**CalendarAgent** — dedicated agent node for real-time slot availability checks; routed to directly by the supervisor for calendar queries, and delegated to by SchedulingAgent during booking flows
+#### Patient Booking Agent (Frontpage — No Auth)
 
-**NotificationAgent** — composes and sends confirmation emails to patients, retries on SMTP failure
+A **separate standalone graph** on the public login page. Patients book appointments without staff involvement.
 
-All agents share:
-- **Thread-based memory** — conversation context persists across multiple messages via `thread_id`
-- **PostgresSaver checkpointer** — LangGraph state stored in Supabase, survives process restarts
-- **Structured state** — shared `AgentState` TypedDict passed between all nodes
+```
+                Patient Message (no auth required)
+                            │
+                            ▼
+              ┌─────────────────────────────┐
+              │         agent_node           │
+              │                             │
+              │  __PATIENT_BOOK__:{...}  ───┼──► _book_appointment()
+              │  (slot picker submitted)    │       └─► booking_confirm UI ──► END
+              │                             │
+              │  __PATIENT_REGISTER__:{...} ┼──► _register_patient()
+              │  (reg form submitted)       │       └─► _book_appointment()
+              │                             │             └─► booking_confirm UI ──► END
+              │                             │
+              │  natural language           ┼──► LLM (last 8 msgs only)
+              │                             │
+              └──────────────┬──────────────┘
+                             │ tool_calls present?
+                    Yes ─────┘──────── No
+                    │                  │
+                    ▼                  ▼
+            ┌──────────────┐          END
+            │  tools_node  │
+            │              │
+            │ find_patient ├──► 1 match  → patient_slot_picker UI ──► END
+            │              ├──► 0 match  → patient_registration_form UI ──► END
+            │              └──► multiple → registration_form UI ──► END
+            │                             (privacy: never exposes other records)
+            │ view_my_     │
+            │ appointments ├──► upcoming + past list ──► agent (LLM formats) ──► END
+            └──────────────┘
+```
+
+**LLM is called only for:** identity parsing (`find_patient`) and appointment lookup (`view_my_appointments`). Slot picker and registration form submissions bypass the LLM entirely — pure DB writes returning a confirmation card.
+
+All staff agents share:
+- **Thread-based memory** — conversation persists across turns via `thread_id`
+- **PostgresSaver checkpointer** — LangGraph state in Supabase, survives restarts
+- **Shared `AgentState`** — fields written by one agent (e.g. `patient_id`) are readable by the next
+
+See [docs/agents.md](docs/agents.md) for full documentation — all node descriptions, role access rules, conversation walkthroughs, and configuration reference.
 
 ### Calendar & Appointments
 - Month-view calendar combining two event sources:
@@ -326,13 +399,16 @@ cliniccare-v2/
 ├── backend/
 │   ├── agents/
 │   │   ├── graph.py              LangGraph graph builder
-│   │   ├── supervisor.py         Intent router
+│   │   ├── supervisor.py         Intent router + routing cache
 │   │   ├── state.py              Shared AgentState TypedDict
 │   │   ├── receptionist_agent.py Patient identification + registration
 │   │   ├── rag_agent.py          Clinical history queries (ReAct)
 │   │   ├── scheduling_agent.py   Appointment booking + conflicts
 │   │   ├── notification_agent.py Email composition + SMTP delivery
+│   │   ├── notification_templates.py Pre-written email templates (LLM bypass)
+│   │   ├── history_compressor.py Rolling conversation summary
 │   │   ├── calendar_agent.py     Slot availability checks
+│   │   ├── patient_booking_agent.py Public frontpage booking chatbot (no auth)
 │   │   └── drug_checker.py       Drug interaction validation tool
 │   ├── api/
 │   │   ├── middleware/
@@ -354,6 +430,7 @@ cliniccare-v2/
 │   │   └── patient.py            All Pydantic models + enums
 │   ├── rag/
 │   │   ├── rag_service.py        Orchestrates full RAG pipeline
+│   │   ├── complexity_classifier.py Query complexity routing (simple/complex)
 │   │   ├── chunking/             Visit → text chunk conversion
 │   │   ├── embedding/            OpenAI embedding wrapper
 │   │   └── retrieval/
@@ -477,6 +554,26 @@ Visit `http://localhost:3000`
 | Vectors | ChromaDB Cloud |
 | Cache | Upstash Redis |
 | Agent state | Supabase PostgreSQL |
+
+---
+
+## LLM Optimizations
+
+Four optimizations are implemented to reduce token cost and latency in the agent system without degrading quality.
+
+### 1. Notification Templates
+Pre-written templates in [backend/agents/notification_templates.py](backend/agents/notification_templates.py) intercept `compose_email()` before the LLM is called. Covers ~80% of standard emails (reminder, confirmation, cancellation, rescheduling, follow-up) — LLM is still used for custom staff instructions.
+
+### 2. RAG Complexity Classifier
+[backend/rag/complexity_classifier.py](backend/rag/complexity_classifier.py) classifies queries as `simple` or `complex` using regex in microseconds (zero LLM calls). Simple queries use top-4 retrieval + no reranker + 300-token synthesis. Complex queries use top-10 + CrossEncoder reranker + 600-token synthesis. Saves ~3,700 tokens per simple query vs always running the full pipeline.
+
+### 3. Conversation History Compression
+[backend/agents/history_compressor.py](backend/agents/history_compressor.py) compresses conversation history at the top of every `supervisor_node()` call. When a thread exceeds 12 messages, the oldest 8 are summarised into bullet points by the LLM, keeping only the last 4 messages verbatim. Reduces input tokens per call by up to 85% in long sessions.
+
+### 4. Supervisor Routing Cache
+An in-memory TTL dict in [backend/agents/supervisor.py](backend/agents/supervisor.py) caches LLM routing decisions for 10 minutes. Messages are normalised (proper nouns and dates stripped) before hashing, so "Book Priya with Dr. Anika on March 5" and "Book Salman with Dr. Rohan on April 12" share the same cache key. Corrections and low-confidence results are never cached.
+
+See [docs/optimization.md](docs/optimization.md) for strategy context and [docs/optimization_v2.md](docs/optimization_v2.md) for before/after examples with token savings.
 
 ---
 

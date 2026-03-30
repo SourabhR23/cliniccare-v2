@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from backend.agents.state import AgentState
+from backend.agents.notification_templates import render_template
 from backend.core.config import get_settings
 from backend.core.llm import make_chat_llm
 
@@ -91,6 +92,25 @@ async def compose_email(state: AgentState) -> dict:
             staff_context = msg.content
             break
 
+    # ── Template intercept — skip LLM for standard email types ──────────────
+    # render_template() returns (body, True) when a pre-written template covers
+    # the request. Falls back to (None, False) for custom instructions or missing
+    # fields, in which case we proceed to LLM generation below.
+    template_body, used_template = render_template(
+        email_type=email_type,
+        patient_name=state.get("patient_name") or "Patient",
+        doctor_name=state.get("assigned_doctor_name"),
+        appointment_date=state.get("appointment_date"),
+        appointment_slot=state.get("appointment_slot"),
+        followup_date=state.get("pending_followup_date"),
+        staff_context=staff_context,
+    )
+    if used_template and template_body:
+        logger.info("email_composed_from_template", email_type=email_type,
+                    patient_id=state.get("patient_id"))
+        return {"email_body": template_body, "email_attempt": 1, "email_type": email_type}
+
+    # ── LLM compose — custom instructions or unsupported email type ──────────
     prompt = EMAIL_COMPOSE_PROMPT.format(
         patient_name=state.get("patient_name") or "Patient",
         email_type=email_type,
@@ -105,7 +125,7 @@ async def compose_email(state: AgentState) -> dict:
         response = await _llm.ainvoke([
             SystemMessage(content=prompt),
         ])
-        logger.info("email_composed", email_type=email_type,
+        logger.info("email_composed_via_llm", email_type=email_type,
                     patient_id=state.get("patient_id"))
         return {"email_body": response.content, "email_attempt": 1, "email_type": email_type}
     except Exception as e:
