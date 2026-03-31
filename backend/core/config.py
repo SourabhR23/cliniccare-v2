@@ -93,6 +93,12 @@ class Settings(BaseSettings):
     embedding_digest_minute: int = 0
     scheduling_reminder_check_interval_minutes: int = 60
 
+    # ── PIPELINE LOCK ─────────────────────────────────────────
+    # Set PIPELINE_LOCK_KEY in .env to restrict /admin/embed-batch.
+    # Anyone who doesn't know this key will get a 403.
+    # Leave blank (or omit) to allow any admin to run the pipeline.
+    pipeline_lock_key: Optional[str] = None
+
     # ── AGENT SETTINGS ───────────────────────────────────────
     agent_max_tool_calls: int = 5
     agent_confidence_threshold: float = 0.70

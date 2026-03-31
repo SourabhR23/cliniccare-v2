@@ -29,7 +29,7 @@ ADMIN-ONLY:
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, EmailStr
 import structlog
@@ -40,6 +40,7 @@ from backend.models.patient import TokenData, UserRoleEnum
 from backend.rag.rag_service import RAGService
 from backend.services.auth.auth_service import AuthService
 from backend.utils.audit import log_audit
+from backend.core.config import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -75,6 +76,7 @@ def get_rag_service(db: AsyncIOMotorDatabase = Depends(get_db)) -> RAGService:
 )
 async def trigger_embed_batch(
     batch_size: int = Query(default=100, ge=10, le=500, description="Visits per OpenAI batch call"),
+    x_pipeline_key: Optional[str] = Header(default=None, alias="X-Pipeline-Key"),
     current_user: TokenData = Depends(require_admin),
     rag_service: RAGService = Depends(get_rag_service),
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -95,6 +97,20 @@ async def trigger_embed_batch(
         "triggered_by": "admin@clinic.com"
     }
     """
+    # ── Pipeline lock check ───────────────────────────────────
+    settings = get_settings()
+    if settings.pipeline_lock_key:
+        if x_pipeline_key != settings.pipeline_lock_key:
+            logger.warning(
+                "embed_batch_locked",
+                admin_id=current_user.user_id,
+                admin_email=current_user.email,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Pipeline is locked. Access key required.",
+            )
+
     logger.info(
         "embed_batch_triggered",
         admin_id=current_user.user_id,

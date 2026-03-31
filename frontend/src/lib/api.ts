@@ -82,7 +82,10 @@ export const previsitBrief = (patientId: string) =>
   api.get(`/rag/previsit-brief/${patientId}`)
 
 // Admin
-export const embedBatch = () => api.post('/admin/embed-batch')
+export const embedBatch = (pipelineKey?: string) =>
+  api.post('/admin/embed-batch', undefined, {
+    headers: pipelineKey ? { 'X-Pipeline-Key': pipelineKey } : {},
+  })
 
 export const retryFailed = () => api.post('/admin/retry-failed')
 

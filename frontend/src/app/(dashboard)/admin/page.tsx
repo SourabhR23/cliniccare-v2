@@ -18,6 +18,7 @@ import {
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { Modal } from '@/components/ui/Modal'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 type Tab = 'overview' | 'pipeline' | 'agents' | 'audit'
@@ -53,6 +54,10 @@ export default function AdminPage() {
     already_in_chroma: number; already_in_chroma_ids: string[]
     fixed?: number; message?: string
   } | null>(null)
+
+  // pipeline lock modal state
+  const [showPipelineModal, setShowPipelineModal] = useState(false)
+  const [pipelineKeyInput, setPipelineKeyInput] = useState('')
 
   // agent tab state
   const [statsDays, setStatsDays] = useState(7)
@@ -108,19 +113,25 @@ export default function AdminPage() {
 
   // ── mutations ────────────────────────────────────────────────────────────────
   const embedMutation = useMutation({
-    mutationFn: () => embedBatch(),
+    mutationFn: (key?: string) => embedBatch(key),
     onMutate: () => { setIsPipelineRunning(true); toast.info('Embedding pipeline started…') },
     onSuccess: (res) => {
       const data = res.data as EmbedBatchResult
       setLastRun(data)
       setIsPipelineRunning(false)
+      setShowPipelineModal(false)
+      setPipelineKeyInput('')
       toast.success(`Done: ${data.embedded} embedded, ${data.failed} failed in ${data.duration_seconds.toFixed(1)}s`)
       refetchQueue()
     },
     onError: (err: unknown) => {
       setIsPipelineRunning(false)
-      const e = err as { response?: { data?: { detail?: string } } }
-      toast.error(e?.response?.data?.detail || 'Pipeline failed')
+      const e = err as { response?: { status?: number; data?: { detail?: string } } }
+      if (e?.response?.status === 403) {
+        toast.error('Pipeline is locked — access key required or incorrect.')
+      } else {
+        toast.error(e?.response?.data?.detail || 'Pipeline failed')
+      }
     },
   })
 
@@ -460,7 +471,7 @@ export default function AdminPage() {
                   </div>
                 )}
                 <Button
-                  onClick={() => embedMutation.mutate()}
+                  onClick={() => { setPipelineKeyInput(''); setShowPipelineModal(true) }}
                   loading={embedMutation.isPending || isPipelineRunning}
                   size="md"
                 >
@@ -907,6 +918,56 @@ export default function AdminPage() {
           </Card>
         </div>
       )}
+
+      {/* ── Pipeline Lock Modal ─────────────────────────────────────────────── */}
+      <Modal
+        open={showPipelineModal}
+        onClose={() => { setShowPipelineModal(false); setPipelineKeyInput('') }}
+        title="Pipeline Access Key"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-[#5a8898]">
+            The embedding pipeline is protected. Enter the access key to proceed.
+          </p>
+          <div>
+            <label className="text-[11px] font-sans text-[#5a8898] block mb-1.5">Access Key</label>
+            <input
+              type="password"
+              value={pipelineKeyInput}
+              onChange={(e) => setPipelineKeyInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pipelineKeyInput) {
+                  embedMutation.mutate(pipelineKeyInput)
+                }
+              }}
+              placeholder="Enter access key…"
+              autoFocus
+              className="w-full px-3 py-2 text-sm rounded-[8px] border border-[#c8dde6] bg-[#f0f6f8] text-[#052838] placeholder:text-[#8aaab8] focus:outline-none focus:border-sky focus:ring-1 focus:ring-sky/30 font-sans"
+            />
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => { setShowPipelineModal(false); setPipelineKeyInput('') }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => embedMutation.mutate(pipelineKeyInput)}
+              loading={embedMutation.isPending || isPipelineRunning}
+              disabled={!pipelineKeyInput}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Run Pipeline
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
