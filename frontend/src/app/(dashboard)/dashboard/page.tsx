@@ -103,7 +103,14 @@ function AdminDashboard() {
     }
   }
 
-  const chipSuggestions = ['Bookings today', 'Follow-ups this week', 'Doctor 1 week plan']
+  const chipSuggestions = [
+    'Bookings today',
+    'Follow-ups this week',
+    ...doctors.slice(0, 2).map((d) => {
+      const shortName = d.name.replace(/^Dr\.?\s*/i, '').split(' ')[0]
+      return `Dr. ${shortName} week plan`
+    }),
+  ]
 
   return (
     <div className="space-y-5">
@@ -245,7 +252,9 @@ function AdminDashboard() {
                 </div>
               </div>
             )}
-            {msgs.map((msg, i) => (
+            {msgs.map((msg, i) => {
+              const hasTable = msg.role === 'assistant' && (msg.content.includes('|---|') || msg.content.includes('| ---') || msg.content.includes('|--'))
+              return (
               <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {msg.role === 'assistant' && (
                   <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -255,7 +264,8 @@ function AdminDashboard() {
                   </div>
                 )}
                 <div className={cn(
-                  'max-w-[80%] rounded-[12px] px-4 py-2.5 text-sm leading-relaxed',
+                  'rounded-[12px] px-4 py-2.5 text-sm leading-relaxed overflow-hidden',
+                  hasTable ? 'w-full max-w-full' : 'max-w-[80%]',
                   msg.role === 'user'
                     ? 'bg-sky/10 border border-sky/15 text-[#052838]'
                     : msg.isError
@@ -268,13 +278,24 @@ function AdminDashboard() {
                       strong: ({ children }) => <strong className="font-semibold text-[#052838]">{children}</strong>,
                       ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-1.5">{children}</ul>,
                       li: ({ children }) => <li className="text-[#1a4858]">{children}</li>,
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-2 rounded-[8px] border border-[#c8dde6]">
+                          <table className="text-xs border-collapse w-full">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="bg-[#e8f2f6]">{children}</thead>,
+                      tbody: ({ children }) => <tbody>{children}</tbody>,
+                      tr: ({ children }) => <tr className="border-b border-[#c8dde6] last:border-0">{children}</tr>,
+                      th: ({ children }) => <th className="text-left px-3 py-2 font-semibold text-[#052838] whitespace-nowrap">{children}</th>,
+                      td: ({ children }) => <td className="px-3 py-1.5 text-[#1a4858] whitespace-nowrap">{children}</td>,
                     }}>
                       {msg.content}
                     </ReactMarkdown>
                   ) : msg.content}
                 </div>
               </div>
-            ))}
+              )
+            })}
             {loading && (
               <div className="flex gap-3">
                 <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
